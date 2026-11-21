@@ -88,17 +88,37 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     }
   }
 
+  /// Navigates to [location] unless a page for it is already on the
+  /// navigation stack.
+  ///
+  /// go_router derives every page key from the matched path, so pushing a
+  /// route that is already open (for example tapping a staff notification
+  /// while the Staff page sits beneath the Notifications screen) crashes with
+  /// "keyReservation.contains(key)". In that case the Notifications screen is
+  /// simply popped, revealing the page that is already open.
+  void _pushUnique(String location) {
+    final config = GoRouter.of(context).routerDelegate.currentConfiguration;
+    final alreadyOpen = config.matches.any(
+      (match) => match.matchedLocation == location,
+    );
+    if (alreadyOpen) {
+      if (context.canPop()) context.pop();
+      return;
+    }
+    context.push(location);
+  }
+
   /// Staff registration notifications go straight to the Staff page.
   void _openStaffRequest(AppNotification notification) {
     _markReadQuietly(notification);
-    context.push('/staff-requests');
+    _pushUnique('/staff-requests');
   }
 
   /// Discount request notifications go straight to the Discount Approvals
   /// page, where the request can be reviewed and approved or rejected.
   void _openApprovals(AppNotification notification) {
     _markReadQuietly(notification);
-    context.push('/approvals');
+    _pushUnique('/approvals');
   }
 
   /// Expands or collapses a plain notification. Read state is left untouched
@@ -113,7 +133,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   void _openLinked(AppNotification notification) {
     _markReadQuietly(notification);
     if (widget.store.getCustomerById(notification.customerId) != null) {
-      context.push('/customer/${notification.customerId}');
+      _pushUnique('/customer/${notification.customerId}');
     }
   }
 

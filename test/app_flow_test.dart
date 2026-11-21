@@ -18,10 +18,12 @@ Customer _customer({
   double cost = 1000,
   double paid = 0,
   DateTime? dueDate,
+  DateTime? dateAdded,
   AccountStatus status = AccountStatus.active,
 }) {
   return Customer(
     id: id,
+    dateAdded: dateAdded,
     name: name,
     address: 'Test Address',
     contactNumber: '09170000000',
@@ -43,6 +45,7 @@ CustomerStore _seedStore() {
       name: 'Maria Santos',
       cost: 2000,
       paid: 500,
+      dateAdded: now.subtract(const Duration(hours: 2)),
       dueDate: now.add(const Duration(days: 30)),
     ),
   );
@@ -51,6 +54,7 @@ CustomerStore _seedStore() {
       id: 'CUS-0002',
       name: 'Jose Dela Cruz',
       cost: 2000,
+      dateAdded: now.subtract(const Duration(hours: 1)),
       dueDate: now.subtract(const Duration(days: 120)),
     ),
   );
@@ -60,6 +64,7 @@ CustomerStore _seedStore() {
       name: 'Ana Reyes',
       cost: 1000,
       paid: 1000,
+      dateAdded: now,
       dueDate: now.subtract(const Duration(days: 5)),
     ),
   );
@@ -436,10 +441,11 @@ void main() {
       await _pumpApp(tester, _seedStore(), initialLocation: '/search');
 
       expect(find.text('All Customers'), findsWidgets);
-      expect(find.text('Maria Santos'), findsOneWidget);
+      // Newest first: Ana, then Jose.
+      expect(find.text('Ana Reyes'), findsOneWidget);
       expect(find.text('Jose Dela Cruz'), findsOneWidget);
 
-      // Ana's completed record sits below the fold.
+      // Maria's older record sits below the fold.
       final listScrollable = find
           .descendant(
             of: find.byType(RefreshIndicator),
@@ -447,12 +453,12 @@ void main() {
           )
           .first;
       await tester.dragUntilVisible(
-        find.text('Ana Reyes'),
+        find.text('Maria Santos'),
         listScrollable,
         const Offset(0, -150),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(find.text('Maria Santos'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -833,6 +839,67 @@ void main() {
       await tester.tap(find.text('Staff List (0)'));
       await tester.pumpAndSettle();
       expect(find.text('No staff yet'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('staff notification tap works when staff page already open', (
+      tester,
+    ) async {
+      final store = CustomerStore();
+
+      // Reproduces the crash: the Staff page is already on the navigation
+      // stack when the notification is tapped.
+      await _pumpApp(tester, store, initialLocation: '/staff-requests');
+      await tester.tap(find.byTooltip('Notifications'));
+      await tester.pumpAndSettle();
+
+      store.insertNotification(
+        AppNotification(
+          id: 'NT-0001',
+          type: AppNotificationType.staffRegistered,
+          title: 'New staff registration',
+          message: 'Sam Staff (staff@cipms.test) is awaiting your approval.',
+          audienceRole: 'admin',
+          customerId: '',
+          staffUid: 'staff-uid',
+          createdAt: DateTime.now(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('New staff registration'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Staff Requests (0)'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('discount notification tap works when approvals already open', (
+      tester,
+    ) async {
+      final store = CustomerStore();
+
+      await _pumpApp(tester, store, initialLocation: '/approvals');
+      await tester.tap(find.byTooltip('Notifications'));
+      await tester.pumpAndSettle();
+
+      store.insertNotification(
+        AppNotification(
+          id: 'NT-0002',
+          type: AppNotificationType.discountRequested,
+          title: 'New discount request',
+          message: 'Maria Santos (CUS-0001) requested a ₱200.00 discount.',
+          audienceRole: 'admin',
+          customerId: 'CUS-0001',
+          createdAt: DateTime.now(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('New discount request'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discount Approvals'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 
