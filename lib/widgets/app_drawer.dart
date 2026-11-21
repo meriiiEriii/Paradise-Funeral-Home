@@ -50,7 +50,7 @@ class AppDrawer extends StatelessWidget {
                   _drawerItem(
                     context,
                     Icons.manage_search_rounded,
-                    'Search Customer',
+                    'All Customers',
                     'search',
                   ),
                   _drawerItem(

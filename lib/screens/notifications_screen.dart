@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/app_user.dart';
 import '../data/customer_store.dart';
 import '../models/app_notification.dart';
-import '../models/discount_request.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
 
@@ -25,7 +24,6 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
-  bool _busy = false;
   String? _expandedId;
 
   @override
@@ -48,15 +46,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   List<AppNotification> get _visible =>
       widget.store.notificationsFor(widget.user);
-
-  DiscountRequest? _requestFor(AppNotification notification) {
-    final id = notification.requestId;
-    if (id == null || id.isEmpty) return null;
-    for (final request in widget.store.discountRequests) {
-      if (request.id == id) return request;
-    }
-    return null;
-  }
 
   Future<void> _setRead(AppNotification notification, bool read) async {
     final isRead = notification.isReadBy(widget.user);
@@ -91,101 +80,29 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     }
   }
 
-  Future<void> _run(Future<void> Function() action, String success) async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      await action();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(success)),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  /// Staff registration notifications go straight to the Staff page.
-  void _openStaffRequest(AppNotification notification) {
+  void _markReadQuietly(AppNotification notification) {
     if (!notification.isReadBy(widget.user)) {
       widget.store
           .markNotificationRead(notification.id, widget.user.uid)
           .catchError((_) {});
     }
+  }
+
+  /// Staff registration notifications go straight to the Staff page.
+  void _openStaffRequest(AppNotification notification) {
+    _markReadQuietly(notification);
     context.push('/staff-requests');
   }
 
-  Future<void> _approveDiscount(DiscountRequest request) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.verified_outlined, size: 26),
-        title: const Text('Approve discount'),
-        content: Text(
-          'Apply a ₱${request.amount.toStringAsFixed(2)} discount to '
-          '${request.customerName} (${request.customerId})?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Approve'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await _run(
-      () => widget.store.approveDiscountRequest(request.id),
-      'Discount request approved.',
-    );
+  /// Discount request notifications go straight to the Discount Approvals
+  /// page, where the request can be reviewed and approved or rejected.
+  void _openApprovals(AppNotification notification) {
+    _markReadQuietly(notification);
+    context.push('/approvals');
   }
 
-  Future<void> _rejectDiscount(DiscountRequest request) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.cancel_outlined, size: 26),
-        title: const Text('Reject discount'),
-        content: Text(
-          'Reject the ₱${request.amount.toStringAsFixed(2)} request for '
-          '${request.customerName}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Reject'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await _run(
-      () => widget.store.rejectDiscountRequest(request.id),
-      'Discount request rejected.',
-    );
-  }
-
-  /// Expands or collapses a notification. The details (discount amount,
-  /// reason) and the Approve/Reject actions only appear once the notification
-  /// is opened. Read state is left untouched so the tile does not jump
-  /// between the Unread/Read tabs while it is being reviewed.
+  /// Expands or collapses a plain notification. Read state is left untouched
+  /// so the tile does not jump between the Unread/Read tabs.
   void _toggle(AppNotification notification) {
     final wasExpanded = _expandedId == notification.id;
     setState(() {
@@ -194,11 +111,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   void _openLinked(AppNotification notification) {
-    if (!notification.isReadBy(widget.user)) {
-      widget.store
-          .markNotificationRead(notification.id, widget.user.uid)
-          .catchError((_) {});
-    }
+    _markReadQuietly(notification);
     if (widget.store.getCustomerById(notification.customerId) != null) {
       context.push('/customer/${notification.customerId}');
     }
@@ -294,20 +207,20 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     final palette = AppPalette.of(context);
     final unread = !notification.isReadBy(widget.user);
     final config = _iconConfig(notification.type, palette);
-    final request = _requestFor(notification);
     final isStaffRequest =
         notification.type == AppNotificationType.staffRegistered;
-    final expanded = !isStaffRequest && _expandedId == notification.id;
-    final canReviewDiscount =
-        widget.user.isAdmin &&
-        notification.type == AppNotificationType.discountRequested &&
-        request != null;
+    final isDiscountRequest =
+        notification.type == AppNotificationType.discountRequested;
+    final expanded =
+        !isStaffRequest && !isDiscountRequest && _expandedId == notification.id;
 
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: isStaffRequest
             ? () => _openStaffRequest(notification)
+            : isDiscountRequest
+            ? () => _openApprovals(notification)
             : () => _toggle(notification),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -415,10 +328,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               ),
               if (expanded) ...[
                 const SizedBox(height: 12),
-                if (canReviewDiscount)
-                  _buildDiscountDetails(request)
-                else
-                  _buildExpandedInfo(notification),
+                _buildExpandedInfo(notification),
                 const SizedBox(height: 10),
                 Align(
                   alignment: Alignment.centerRight,
@@ -444,102 +354,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       style: theme.textTheme.bodySmall?.copyWith(
         color: palette.muted,
         fontSize: 11.5,
-      ),
-    );
-  }
-
-  // Staff registration notifications navigate directly to the Staff page;
-  // no inline actions are shown for them here.
-
-
-  Widget _buildDiscountDetails(DiscountRequest request) {
-    final theme = Theme.of(context);
-    final palette = AppPalette.of(context);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: palette.surfaceAlt,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: palette.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Discount requested: ₱${request.amount.toStringAsFixed(2)}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: palette.warning,
-                  ),
-                ),
-              ),
-              if (!request.isPending)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: request.status == DiscountRequestStatus.approved
-                        ? palette.success.withValues(alpha: 0.12)
-                        : palette.danger.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color:
-                          request.status == DiscountRequestStatus.approved
-                          ? palette.success.withValues(alpha: 0.3)
-                          : palette.danger.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Text(
-                    request.status.label,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: request.status == DiscountRequestStatus.approved
-                          ? palette.success
-                          : palette.danger,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Reason: ${request.reason}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: palette.muted,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-          if (request.isPending) ...[
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _rejectDiscount(request),
-                  icon: const Icon(Icons.close_rounded, size: 17),
-                  label: const Text('Reject'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: palette.danger,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton.icon(
-                  onPressed: _busy ? null : () => _approveDiscount(request),
-                  icon: const Icon(Icons.check_rounded, size: 17),
-                  label: const Text('Approve'),
-                ),
-              ],
-            ),
-          ],
-        ],
       ),
     );
   }

@@ -426,7 +426,59 @@ void main() {
   group('Routing', () {
     testWidgets('deep links open the requested route', (tester) async {
       await _pumpApp(tester, _seedStore(), initialLocation: '/search');
-      expect(find.text('Customer Registry'), findsOneWidget);
+      expect(find.text('All Customers'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('all customers page lists every record immediately', (
+      tester,
+    ) async {
+      await _pumpApp(tester, _seedStore(), initialLocation: '/search');
+
+      expect(find.text('All Customers'), findsWidgets);
+      expect(find.text('Maria Santos'), findsOneWidget);
+      expect(find.text('Jose Dela Cruz'), findsOneWidget);
+
+      // Ana's completed record sits below the fold.
+      final listScrollable = find
+          .descendant(
+            of: find.byType(RefreshIndicator),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.dragUntilVisible(
+        find.text('Ana Reyes'),
+        listScrollable,
+        const Offset(0, -150),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('discount approvals shows a discount history tab', (
+      tester,
+    ) async {
+      final store = _seedStore();
+      await store.requestDiscount('CUS-0001', 200, 'Goodwill discount');
+      await store.approveDiscountRequest(store.pendingDiscountRequests.first.id);
+      await store.requestDiscount('CUS-0002', 150, 'Damaged item credit');
+      await store.rejectDiscountRequest(
+        store.pendingDiscountRequests.first.id,
+        note: 'Not eligible',
+      );
+
+      await _pumpApp(tester, store, initialLocation: '/approvals');
+      expect(find.text('Requests (0)'), findsOneWidget);
+      expect(find.text('Discount History (2)'), findsOneWidget);
+
+      await tester.tap(find.text('Discount History (2)'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Goodwill discount'), findsWidgets);
+      expect(find.textContaining('Damaged item credit'), findsWidgets);
+      expect(find.text('Approved'), findsOneWidget);
+      expect(find.text('Rejected'), findsOneWidget);
+      expect(find.textContaining('Not eligible'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 
@@ -467,6 +519,63 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(changed, ThemeMode.dark);
+    });
+
+    testWidgets('dark mode persists across an app restart', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await AppPreferences.load();
+      final store = _seedStore();
+      final session = FakeAuthSession.admin();
+
+      Future<void> pumpApp() async {
+        await tester.pumpWidget(
+          CIPMSApp(
+            store: store,
+            session: session,
+            preferences: prefs,
+            initialThemeMode: prefs.loadThemeMode(),
+            onThemeChanged: prefs.saveThemeMode,
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await pumpApp();
+      await tester.tap(find.byTooltip('Switch to dark mode'));
+      await tester.pumpAndSettle();
+      expect(prefs.loadThemeMode(), ThemeMode.dark);
+
+      // A fresh app instance (simulated restart) must restore dark mode.
+      await pumpApp();
+      final scaffold = tester.element(find.byType(Scaffold).first);
+      expect(Theme.of(scaffold).brightness, Brightness.dark);
+    });
+
+    testWidgets('theme is re-applied from preferences on session changes', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'cipms.theme.v1': 'dark'});
+      final prefs = await AppPreferences.load();
+      final session = FakeAuthSession.admin();
+
+      await tester.pumpWidget(
+        CIPMSApp(
+          store: _seedStore(),
+          session: session,
+          preferences: prefs,
+          initialThemeMode: prefs.loadThemeMode(),
+          onThemeChanged: prefs.saveThemeMode,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Sign-out (and sign-in) events must not reset the theme to light.
+      await session.signOut();
+      await tester.pumpAndSettle();
+
+      final scaffold = tester.element(find.byType(Scaffold).first);
+      expect(Theme.of(scaffold).brightness, Brightness.dark);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('payment from a profile updates the shared store', (
@@ -510,7 +619,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('notification details and actions only show when opened', (
+    testWidgets('discount request notifications open the approvals page', (
       tester,
     ) async {
       final store = _seedStore();
@@ -518,24 +627,18 @@ void main() {
 
       await _pumpApp(tester, store, initialLocation: '/notifications');
 
-      // Collapsed: no approve/reject actions or details visible.
+      // No inline review actions in the notification itself.
       expect(find.text('Approve'), findsNothing);
-      expect(find.textContaining('Goodwill discount'), findsNothing);
+      expect(find.text('Reject'), findsNothing);
 
-      // Opening the notification reveals the details and actions.
+      // Tapping the notification navigates to Discount Approvals.
       await tester.tap(find.text('New discount request'));
       await tester.pumpAndSettle();
+
+      expect(find.text('Discount Approvals'), findsWidgets);
       expect(find.textContaining('Goodwill discount'), findsWidgets);
       expect(find.text('Approve'), findsOneWidget);
       expect(find.text('Reject'), findsOneWidget);
-
-      // Approving works from the notification itself.
-      await tester.tap(find.text('Approve'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Approve').last);
-      await tester.pumpAndSettle();
-
-      expect(store.getCustomerById('CUS-0001')!.approvedDiscount, 200);
       expect(tester.takeException(), isNull);
     });
 
@@ -681,7 +784,7 @@ void main() {
 
       await tester.tap(find.byTooltip('Open menu'));
       await tester.pumpAndSettle();
-      expect(find.text('Search Customer'), findsOneWidget);
+      expect(find.text('All Customers'), findsOneWidget);
       expect(find.text('Payment'), findsOneWidget);
       expect(find.text('Discount Approvals'), findsNothing);
       expect(find.text('Staff'), findsWidgets);

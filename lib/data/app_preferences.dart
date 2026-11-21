@@ -76,13 +76,18 @@ class AppPreferences {
     final String? stored;
     try {
       stored = _prefs.getString(_themeKey);
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Could not read the saved theme: $error');
       return ThemeMode.light;
     }
     return stored == ThemeMode.dark.name ? ThemeMode.dark : ThemeMode.light;
   }
 
-  Future<void> saveThemeMode(ThemeMode mode) {
-    return _prefs.setString(_themeKey, mode.name);
+  Future<void> saveThemeMode(ThemeMode mode) async {
+    try {
+      await _prefs.setString(_themeKey, mode.name);
+    } catch (error) {
+      debugPrint('Could not persist the theme preference: $error');
+    }
   }
 }

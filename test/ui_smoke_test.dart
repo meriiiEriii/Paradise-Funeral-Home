@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inventory/auth/auth_session.dart';
@@ -89,11 +89,11 @@ void main() {
 
     await tester.tap(find.byTooltip('Open menu'));
     await tester.pumpAndSettle();
-    expect(find.text('Search Customer'), findsOneWidget);
+    expect(find.text('All Customers'), findsOneWidget);
 
-    await tester.tap(find.text('Search Customer'));
+    await tester.tap(find.text('All Customers'));
     await tester.pumpAndSettle();
-    expect(find.text('Customer Registry'), findsOneWidget);
+    expect(find.text('All Customers'), findsWidgets);
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -162,7 +162,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    await openRoute('Search Customer');
+    await openRoute('All Customers');
     await openRoute('Payment');
     await openRoute('Staff');
     await openRoute('Discount Approvals');
@@ -214,7 +214,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    await openRoute('Search Customer');
+    await openRoute('All Customers');
     await openRoute('Payment');
     await openRoute('Staff');
     await openRoute('Discount Approvals');

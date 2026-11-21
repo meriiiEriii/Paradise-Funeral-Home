@@ -16,12 +16,15 @@ class ApprovalsScreen extends StatefulWidget {
   State<ApprovalsScreen> createState() => _ApprovalsScreenState();
 }
 
-class _ApprovalsScreenState extends State<ApprovalsScreen> {
+class _ApprovalsScreenState extends State<ApprovalsScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    _tabs = TabController(length: 2, vsync: this);
     widget.store.addListener(_onStoreChanged);
   }
 
@@ -32,7 +35,20 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   @override
   void dispose() {
     widget.store.removeListener(_onStoreChanged);
+    _tabs.dispose();
     super.dispose();
+  }
+
+  List<DiscountRequest> get _history {
+    final reviewed = widget.store.discountRequests
+        .where((request) => !request.isPending)
+        .toList();
+    reviewed.sort(
+      (a, b) => (b.reviewedAt ?? b.requestedAt).compareTo(
+        a.reviewedAt ?? a.requestedAt,
+      ),
+    );
+    return reviewed;
   }
 
   Future<void> _approve(DiscountRequest request) async {
@@ -132,49 +148,127 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     final requests = widget.store.pendingDiscountRequests;
+    final history = _history;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const PageHeader(
-                icon: Icons.approval_outlined,
-                title: 'Discount Approvals',
-                subtitle:
-                    'Review discount requests from staff before they are applied to an account.',
-              ),
-              const SizedBox(height: 20),
-              if (requests.isEmpty)
-                Card(
-                  child: EmptyState(
-                    icon: Icons.task_alt_rounded,
-                    title: 'No pending requests',
-                    message:
-                        'When staff request a discount, it will appear here for your review.',
-                    action: TextButton.icon(
-                      onPressed: () => context.go('/dashboard'),
-                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: const Text('Back to dashboard'),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const PageHeader(
+                    icon: Icons.approval_outlined,
+                    title: 'Discount Approvals',
+                    subtitle:
+                        'Review discount requests from staff before they are applied to an account.',
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: palette.surfaceAlt,
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(color: palette.border),
+                    ),
+                    child: TabBar(
+                      controller: _tabs,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicator: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      labelColor: theme.colorScheme.onPrimary,
+                      unselectedLabelColor: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.75),
+                      dividerColor: Colors.transparent,
+                      tabs: [
+                        Tab(text: 'Requests (${requests.length})'),
+                        Tab(text: 'Discount History (${history.length})'),
+                      ],
                     ),
                   ),
-                )
-              else
-                Column(
-                  children: [
-                    for (final request in requests) ...[
-                      _buildRequestCard(request),
-                      const SizedBox(height: 14),
-                    ],
-                  ],
-                ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _buildRequests(requests),
+              _buildHistory(history),
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildRequests(List<DiscountRequest> requests) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 960),
+        child: requests.isEmpty
+            ? ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  Card(
+                    child: EmptyState(
+                      icon: Icons.task_alt_rounded,
+                      title: 'No pending requests',
+                      message:
+                          'When staff request a discount, it will appear here for your review.',
+                      action: TextButton.icon(
+                        onPressed: () => context.go('/dashboard'),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: const Text('Back to dashboard'),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.all(20),
+                itemCount: requests.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 14),
+                itemBuilder: (context, index) =>
+                    _buildRequestCard(requests[index]),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildHistory(List<DiscountRequest> history) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 960),
+        child: history.isEmpty
+            ? ListView(
+                padding: const EdgeInsets.all(20),
+                children: const [
+                  Card(
+                    child: EmptyState(
+                      icon: Icons.history_rounded,
+                      title: 'No reviewed requests yet',
+                      message:
+                          'Approved and rejected discount requests will be kept here with their details.',
+                    ),
+                  ),
+                ],
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.all(20),
+                itemCount: history.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 14),
+                itemBuilder: (context, index) => _buildHistoryCard(history[index]),
+              ),
       ),
     );
   }
@@ -320,6 +414,151 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryCard(DiscountRequest request) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+    final approved = request.status == DiscountRequestStatus.approved;
+    final statusColor = approved ? palette.success : palette.danger;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    approved
+                        ? Icons.verified_outlined
+                        : Icons.cancel_outlined,
+                    size: 20,
+                    color: statusColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.customerName.isEmpty
+                            ? request.customerId
+                            : request.customerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        request.customerId,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: palette.muted,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Text(
+                    request.status.label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _historyRow(context, 'Amount', '₱${request.amount.toStringAsFixed(2)}'),
+            _historyRow(context, 'Reason', request.reason),
+            _historyRow(
+              context,
+              'Date requested',
+              _formatDateTime(request.requestedAt),
+            ),
+            if (request.reviewedAt != null)
+              _historyRow(
+                context,
+                approved ? 'Date approved' : 'Date rejected',
+                _formatDateTime(request.reviewedAt!),
+              ),
+            if (request.requestedByEmail.isNotEmpty)
+              _historyRow(
+                context,
+                'Requested by',
+                request.requestedByEmail,
+              ),
+            if (request.reviewedByEmail != null &&
+                request.reviewedByEmail!.isNotEmpty)
+              _historyRow(
+                context,
+                'Reviewed by',
+                request.reviewedByEmail!,
+              ),
+            if (request.reviewNote.isNotEmpty)
+              _historyRow(context, 'Note', request.reviewNote),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _historyRow(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 118,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: palette.muted,
+                fontSize: 11.5,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

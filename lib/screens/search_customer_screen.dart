@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/customer.dart';
@@ -19,16 +19,17 @@ class SearchCustomerScreen extends StatefulWidget {
 class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
   final _searchCtrl = TextEditingController();
   List<Customer> _results = [];
-  bool _hasSearched = false;
 
   @override
   void initState() {
     super.initState();
     widget.store.addListener(_onStoreChanged);
+    // Every customer record â€” active, delayed, and completed â€” is listed
+    // right away, newest first.
+    _results = widget.store.searchAllCustomers(_searchCtrl.text);
   }
 
   void _onStoreChanged() {
-    if (!_hasSearched) return;
     setState(() {
       _results = widget.store.searchAllCustomers(_searchCtrl.text);
     });
@@ -43,7 +44,6 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
 
   void _search(String query) {
     setState(() {
-      _hasSearched = true;
       _results = widget.store.searchAllCustomers(query);
     });
   }
@@ -108,7 +108,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Customer Registry',
+                      'All Customers',
                       style: TextStyle(
                         fontFamily: 'Bitter',
                         color: Colors.white,
@@ -119,7 +119,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Search every account by name, contact number, or customer ID.',
+                      'Every customer record â€” active, delayed, or completed. Search by name, contact number, or customer ID.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.82),
                         fontSize: 12,
@@ -159,14 +159,6 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
   }
 
   Widget _buildResults() {
-    if (!_hasSearched) {
-      return const EmptyState(
-        icon: Icons.manage_search_rounded,
-        title: 'Start searching',
-        message:
-            'Results appear instantly as you type. Every customer — active, delayed, or archived — is searchable.',
-      );
-    }
 
     if (_results.isEmpty) {
       return const EmptyState(
@@ -390,10 +382,11 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
                 ),
               ],
               const SizedBox(height: 10),
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   AccountStatusBadge(status: customer.accountStatus),
-                  const Spacer(),
                   TextButton.icon(
                     onPressed: () => _openProfile(customer),
                     icon: const Icon(Icons.arrow_forward_rounded, size: 16),
@@ -455,7 +448,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            '₱${amount.toStringAsFixed(2)}',
+            'â‚±${amount.toStringAsFixed(2)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.labelLarge?.copyWith(

@@ -93,6 +93,12 @@ class _CIPMSAppState extends State<CIPMSApp> {
   String? _lastAccountUid;
 
   void _onSessionChanged() {
+    // Re-apply the persisted theme on session events (sign-in, sign-out, or
+    // a restored session) so dark mode never resets during the transition.
+    final storedTheme = widget.preferences?.loadThemeMode();
+    if (storedTheme != null && storedTheme != _themeMode) {
+      setState(() => _themeMode = storedTheme);
+    }
     widget.store.setNotificationRole(widget.session.user?.role);
     final uid = widget.session.accountUser?.uid;
     if (uid != _lastAccountUid) {
@@ -542,7 +548,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'dashboard':
         return 'Dashboard';
       case 'search':
-        return 'Search Customer';
+        return 'All Customers';
       case 'add':
         return 'Add New Customer';
       case 'payment':
