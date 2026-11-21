@@ -19,9 +19,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  AppRole _role = AppRole.staff;
+  bool _pickedRole = false;
   bool _obscure = true;
   bool _busy = false;
   String? _error;
+
+  bool get _isAdmin => _role.isAdmin;
 
   @override
   void dispose() {
@@ -42,6 +46,23 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailCtrl.text,
         password: _passwordCtrl.text,
       );
+      final user = widget.session.user;
+      if (user == null) {
+        throw AuthException('Could not sign in. Please try again.');
+      }
+      if (user.isAdmin != _isAdmin) {
+        await widget.session.signOut();
+        if (mounted) {
+          setState(() {
+            _error = user.isAdmin
+                ? 'This account is registered as an administrator. '
+                    'Choose Admin to sign in.'
+                : 'This account is registered as staff. '
+                    'Choose Staff to sign in.';
+          });
+        }
+        return;
+      }
       if (mounted) context.go('/dashboard');
     } on AuthException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -56,91 +77,143 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final picked = _pickedRole;
+
     return AuthScaffold(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AuthHeader(
-            icon: Icons.lock_outline_rounded,
-            title: 'Welcome back',
-            subtitle:
-                'Sign in to the Paradise Funeral Home management system.',
+          AuthHeader(
+            icon: !picked
+                ? Icons.lock_outline_rounded
+                : _isAdmin
+                ? Icons.admin_panel_settings_rounded
+                : Icons.badge_outlined,
+            title: !picked ? 'Welcome back' : 'Sign in as ${_role.label}',
+            subtitle: !picked
+                ? 'First, tell us how you are signing in to the Paradise '
+                      'Funeral Home management system.'
+                : _isAdmin
+                ? 'Sign in with your administrator account.'
+                : 'Sign in with your staff account.',
           ),
           const SizedBox(height: 24),
-          Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.alternate_email_rounded, size: 19),
-                  ),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-                    if (text.isEmpty) return 'Enter your email';
-                    if (!text.contains('@')) return 'Enter a valid email';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _passwordCtrl,
-                  obscureText: _obscure,
-                  autofillHints: const [AutofillHints.password],
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.key_rounded, size: 19),
-                    suffixIcon: IconButton(
-                      tooltip: _obscure ? 'Show password' : 'Hide password',
-                      icon: Icon(
-                        _obscure
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        size: 19,
-                      ),
-                      onPressed: () => setState(() => _obscure = !_obscure),
+          RoleSelector(
+            role: _role,
+            onChanged: _busy
+                ? null
+                : (role) => setState(() {
+                    _role = role;
+                    _error = null;
+                  }),
+          ),
+          if (!picked) ...[
+            const SizedBox(height: 22),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () => setState(() {
+                  _pickedRole = true;
+                  _error = null;
+                }),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 19),
+                label: const Text('Continue'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => context.go('/register'),
+              child: const Text('New here? Create an account'),
+            ),
+          ] else ...[
+            const SizedBox(height: 22),
+            Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.alternate_email_rounded, size: 19),
                     ),
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) return 'Enter your email';
+                      if (!text.contains('@')) return 'Enter a valid email';
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if ((value ?? '').isEmpty) return 'Enter your password';
-                    return null;
-                  },
-                ),
-              ],
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _passwordCtrl,
+                    obscureText: _obscure,
+                    autofillHints: const [AutofillHints.password],
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.key_rounded, size: 19),
+                      suffixIcon: IconButton(
+                        tooltip: _obscure ? 'Show password' : 'Hide password',
+                        icon: Icon(
+                          _obscure
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 19,
+                        ),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ),
+                    validator: (value) {
+                      if ((value ?? '').isEmpty) return 'Enter your password';
+                      return null;
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            AuthErrorBanner(message: _error!),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              AuthErrorBanner(message: _error!),
+            ],
+            const SizedBox(height: 22),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: _busy ? null : _submit,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.login_rounded, size: 19),
+                label: Text(_busy ? 'Signing in...' : 'Sign In'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _pickedRole = false;
+                      _error = null;
+                    }),
+              child: Text(
+                'Not signing in as ${_role.label.toLowerCase()}? '
+                'Change account type',
+              ),
+            ),
+            TextButton(
+              onPressed: _busy ? null : () => context.go('/register'),
+              child: const Text('New here? Create an account'),
+            ),
           ],
-          const SizedBox(height: 22),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: _busy ? null : _submit,
-              icon: _busy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.login_rounded, size: 19),
-              label: Text(_busy ? 'Signing in...' : 'Sign In'),
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: _busy ? null : () => context.go('/register'),
-            child: const Text('New here? Create an account'),
-          ),
         ],
       ),
     );

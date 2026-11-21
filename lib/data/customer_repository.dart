@@ -46,6 +46,8 @@ abstract class CustomerRepository {
 
   Future<void> markNotificationRead(String notificationId);
 
+  Future<void> markNotificationUnread(String notificationId);
+
   Stream<List<StaffRequest>> watchStaffRequests();
 
   Future<void> approveStaff(String uid);

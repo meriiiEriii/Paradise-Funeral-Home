@@ -580,6 +580,26 @@ class CustomerStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> markNotificationUnread(
+    String notificationId,
+    String uid,
+  ) async {
+    if (_repository != null) {
+      await _repository.markNotificationUnread(notificationId);
+      return;
+    }
+    final index = _notifications.indexWhere(
+      (notification) => notification.id == notificationId,
+    );
+    if (index == -1) return;
+    final notification = _notifications[index];
+    if (!notification.readBy.contains(uid)) return;
+    _notifications[index] = notification.copyWith(
+      readBy: notification.readBy.where((id) => id != uid).toList(),
+    );
+    notifyListeners();
+  }
+
   String _nextDiscountRequestId() {
     var next = _discountRequests.length + 1;
     while (_discountRequests.any(

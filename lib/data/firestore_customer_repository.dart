@@ -695,6 +695,16 @@ class FirestoreCustomerRepository implements CustomerRepository {
   }
 
   @override
+  Future<void> markNotificationUnread(String notificationId) async {
+    final user = _requireUser();
+    await _run(() async {
+      await _notifications.doc(notificationId).update({
+        'readBy': FieldValue.arrayRemove([user.uid]),
+      });
+    });
+  }
+
+  @override
   Stream<List<StaffRequest>> watchStaffRequests() {
     return _auth.authStateChanges().asyncExpand((user) {
       if (user == null) return Stream.value(const <StaffRequest>[]);
@@ -827,6 +837,7 @@ class FirestoreCustomerRepository implements CustomerRepository {
       recipientUid: data['recipientUid'] as String?,
       customerId: data['customerId'] as String? ?? '',
       requestId: data['requestId'] as String?,
+      staffUid: data['staffUid'] as String?,
       createdByUid: createdBy['uid'] as String? ?? '',
       createdAt: _date(data['createdAt']) ?? DateTime.now(),
       readBy:

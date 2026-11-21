@@ -469,12 +469,39 @@ void main() {
       );
 
       expect(find.text('Welcome back'), findsOneWidget);
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
       expect(find.text('Sign In'), findsOneWidget);
 
       await tester.tap(find.text('New here? Create an account'));
       await tester.pumpAndSettle();
       expect(find.text('Create your account'), findsOneWidget);
       expect(find.text('Create staff account'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('login asks for the account type before credentials', (
+      tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        _seedStore(),
+        initialLocation: '/login',
+        session: FakeAuthSession.signedOut(),
+      );
+
+      expect(find.text('Staff'), findsOneWidget);
+      expect(find.text('Admin'), findsOneWidget);
+      expect(find.text('Email'), findsNothing);
+
+      await tester.tap(find.text('Admin'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sign in as Admin'), findsOneWidget);
+      expect(find.text('Email'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
