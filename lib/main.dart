@@ -554,7 +554,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'approvals':
         return 'Discount Approvals';
       case 'staff-requests':
-        return 'Staff Requests';
+        return 'Staff';
       default:
         return 'Paradise Funeral Home: Management System';
     }

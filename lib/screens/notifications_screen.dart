@@ -110,68 +110,14 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     }
   }
 
-  Future<void> _approveStaff(AppNotification notification) async {
-    final staffUid = notification.staffUid;
-    if (staffUid == null || staffUid.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.verified_outlined, size: 26),
-        title: const Text('Approve staff account'),
-        content: const Text(
-          'Allow this staff account to sign in to the system?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Approve'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await _run(
-      () => widget.store.approveStaff(staffUid),
-      'Staff account approved.',
-    );
-  }
-
-  Future<void> _rejectStaff(AppNotification notification) async {
-    final staffUid = notification.staffUid;
-    if (staffUid == null || staffUid.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.cancel_outlined, size: 26),
-        title: const Text('Reject staff account'),
-        content: const Text(
-          'Reject this staff registration? They will not be able to sign in.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Reject'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await _run(
-      () => widget.store.rejectStaff(staffUid),
-      'Staff registration rejected.',
-    );
+  /// Staff registration notifications go straight to the Staff page.
+  void _openStaffRequest(AppNotification notification) {
+    if (!notification.isReadBy(widget.user)) {
+      widget.store
+          .markNotificationRead(notification.id, widget.user.uid)
+          .catchError((_) {});
+    }
+    context.push('/staff-requests');
   }
 
   Future<void> _approveDiscount(DiscountRequest request) async {
@@ -252,10 +198,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       widget.store
           .markNotificationRead(notification.id, widget.user.uid)
           .catchError((_) {});
-    }
-    if (notification.type == AppNotificationType.staffRegistered) {
-      context.push('/staff-requests');
-      return;
     }
     if (widget.store.getCustomerById(notification.customerId) != null) {
       context.push('/customer/${notification.customerId}');
@@ -353,11 +295,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     final unread = !notification.isReadBy(widget.user);
     final config = _iconConfig(notification.type, palette);
     final request = _requestFor(notification);
-    final expanded = _expandedId == notification.id;
-    final canReviewStaff =
-        widget.user.isAdmin &&
-        notification.type == AppNotificationType.staffRegistered &&
-        (notification.staffUid?.isNotEmpty ?? false);
+    final isStaffRequest =
+        notification.type == AppNotificationType.staffRegistered;
+    final expanded = !isStaffRequest && _expandedId == notification.id;
     final canReviewDiscount =
         widget.user.isAdmin &&
         notification.type == AppNotificationType.discountRequested &&
@@ -366,7 +306,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => _toggle(notification),
+        onTap: isStaffRequest
+            ? () => _openStaffRequest(notification)
+            : () => _toggle(notification),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -475,8 +417,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 const SizedBox(height: 12),
                 if (canReviewDiscount)
                   _buildDiscountDetails(request)
-                else if (canReviewStaff)
-                  _buildStaffActions(notification)
                 else
                   _buildExpandedInfo(notification),
                 const SizedBox(height: 10),
@@ -485,11 +425,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   child: TextButton.icon(
                     onPressed: () => _openLinked(notification),
                     icon: const Icon(Icons.open_in_new_rounded, size: 15),
-                    label: Text(
-                      notification.type == AppNotificationType.staffRegistered
-                          ? 'Open staff requests'
-                          : 'View customer',
-                    ),
+                    label: const Text('View customer'),
                   ),
                 ),
               ],
@@ -511,6 +447,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       ),
     );
   }
+
+  // Staff registration notifications navigate directly to the Staff page;
+  // no inline actions are shown for them here.
+
 
   Widget _buildDiscountDetails(DiscountRequest request) {
     final theme = Theme.of(context);
@@ -601,37 +541,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildStaffActions(AppNotification notification) {
-    final theme = Theme.of(context);
-    final palette = AppPalette.of(context);
-
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            'Awaiting your approval',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: palette.muted,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        OutlinedButton.icon(
-          onPressed: _busy ? null : () => _rejectStaff(notification),
-          icon: const Icon(Icons.close_rounded, size: 17),
-          label: const Text('Reject'),
-          style: OutlinedButton.styleFrom(foregroundColor: palette.danger),
-        ),
-        const SizedBox(width: 10),
-        ElevatedButton.icon(
-          onPressed: _busy ? null : () => _approveStaff(notification),
-          icon: const Icon(Icons.check_rounded, size: 17),
-          label: const Text('Approve'),
-        ),
-      ],
     );
   }
 

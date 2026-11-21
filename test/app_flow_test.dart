@@ -311,6 +311,24 @@ void main() {
       expect(store.unreadNotificationCount(adminUser), 1);
     });
 
+    test('unpaid accounts show Unpaid instead of Partial', () {
+      final unpaid = _customer(id: 'CUS-0001');
+      expect(unpaid.paymentStatus, PaymentStatus.unpaid);
+
+      final partial = _customer(id: 'CUS-0002', paid: 500);
+      expect(partial.paymentStatus, PaymentStatus.partiallyPaid);
+
+      final fullyPaid = _customer(id: 'CUS-0003', cost: 1000, paid: 1000);
+      expect(fullyPaid.paymentStatus, PaymentStatus.fullyPaid);
+
+      final overdue = _customer(
+        id: 'CUS-0004',
+        paid: 300,
+        dueDate: DateTime.now().subtract(const Duration(days: 10)),
+      );
+      expect(overdue.paymentStatus, PaymentStatus.overdue);
+    });
+
     test('customer lists show the newest customers first', () async {
       final store = CustomerStore();
       await store.addCustomer(
@@ -701,6 +719,50 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('staff page shows requests and staff list tabs', (tester) async {
+      await _pumpApp(tester, _seedStore(), initialLocation: '/staff-requests');
+
+      expect(find.text('Staff'), findsWidgets);
+      expect(find.text('Staff Requests (0)'), findsOneWidget);
+      expect(find.text('Staff List (0)'), findsOneWidget);
+      expect(find.text('No pending staff accounts'), findsOneWidget);
+
+      await tester.tap(find.text('Staff List (0)'));
+      await tester.pumpAndSettle();
+      expect(find.text('No staff yet'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('staff registration notifications navigate to the staff page', (
+      tester,
+    ) async {
+      final store = CustomerStore();
+      store.insertNotification(
+        AppNotification(
+          id: 'NT-0001',
+          type: AppNotificationType.staffRegistered,
+          title: 'New staff registration',
+          message: 'Sam Staff (staff@cipms.test) is awaiting your approval.',
+          audienceRole: 'admin',
+          customerId: '',
+          staffUid: 'staff-uid',
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      await _pumpApp(tester, store, initialLocation: '/notifications');
+
+      expect(find.text('Approve'), findsNothing);
+      expect(find.text('Reject'), findsNothing);
+
+      await tester.tap(find.text('New staff registration'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Staff Requests (0)'), findsOneWidget);
+      expect(find.text('Staff List (0)'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('staff delayed accounts hide the restore action', (
       tester,
     ) async {
@@ -764,7 +826,8 @@ void main() {
       expect(find.text('Administrator'), findsOneWidget);
       expect(find.text('Discount Approvals'), findsOneWidget);
 
-      await tester.tap(find.text('Staff'));
+      // The role chip "Staff" sits above the "Staff" navigation item.
+      await tester.tap(find.text('Staff').first);
       await tester.pumpAndSettle();
       expect(session.isViewingAsStaff, isTrue);
 
@@ -782,7 +845,7 @@ void main() {
 
       await tester.tap(find.byTooltip('Open menu'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Staff'));
+      await tester.tap(find.text('Staff').first);
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Open menu'));

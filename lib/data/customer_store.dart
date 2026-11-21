@@ -15,10 +15,12 @@ class CustomerStore extends ChangeNotifier {
   final List<DiscountRequest> _discountRequests = [];
   final List<AppNotification> _notifications = [];
   final List<StaffRequest> _staffRequests = [];
+  final List<StaffRequest> _staffList = [];
   StreamSubscription<List<Customer>>? _subscription;
   StreamSubscription<List<DiscountRequest>>? _requestSubscription;
   StreamSubscription<List<AppNotification>>? _notificationSubscription;
   StreamSubscription<List<StaffRequest>>? _staffRequestSubscription;
+  StreamSubscription<List<StaffRequest>>? _staffListSubscription;
   Completer<void>? _firstLoad;
   bool _isLoading = false;
   String? _error;
@@ -67,6 +69,10 @@ class CustomerStore extends ChangeNotifier {
   List<StaffRequest> get staffRequests => List.unmodifiable(_staffRequests);
 
   int get pendingStaffRequestCount => _staffRequests.length;
+
+  List<StaffRequest> get staffList => List.unmodifiable(_staffList);
+
+  int get staffCount => _staffList.length;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
 
@@ -166,6 +172,17 @@ class CustomerStore extends ChangeNotifier {
       cancelOnError: false,
     );
 
+    _staffListSubscription = _repository.watchStaffList().listen(
+      (staff) {
+        _staffList
+          ..clear()
+          ..addAll(staff);
+        notifyListeners();
+      },
+      onError: (Object error, StackTrace stackTrace) {},
+      cancelOnError: false,
+    );
+
     await _firstLoad!.future.timeout(
       const Duration(seconds: 10),
       onTimeout: () {
@@ -212,10 +229,12 @@ class CustomerStore extends ChangeNotifier {
     await _requestSubscription?.cancel();
     await _notificationSubscription?.cancel();
     await _staffRequestSubscription?.cancel();
+    await _staffListSubscription?.cancel();
     _subscription = null;
     _requestSubscription = null;
     _notificationSubscription = null;
     _staffRequestSubscription = null;
+    _staffListSubscription = null;
     _firstLoad = null;
     await initialize();
   }
@@ -638,6 +657,14 @@ class CustomerStore extends ChangeNotifier {
     }
   }
 
+  /// Test hook: injects a notification into the local (repository-less)
+  /// store so widget tests can exercise notification screens.
+  @visibleForTesting
+  void insertNotification(AppNotification notification) {
+    _notifications.insert(0, notification);
+    notifyListeners();
+  }
+
   String _nextDiscountRequestId() {
     var next = _discountRequests.length + 1;
     while (_discountRequests.any(
@@ -720,6 +747,7 @@ class CustomerStore extends ChangeNotifier {
     _requestSubscription?.cancel();
     _notificationSubscription?.cancel();
     _staffRequestSubscription?.cancel();
+    _staffListSubscription?.cancel();
     super.dispose();
   }
 }

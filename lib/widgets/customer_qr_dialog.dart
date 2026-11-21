@@ -96,11 +96,13 @@ class _CustomerQrDialogState extends State<_CustomerQrDialog> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )
-                  : QrImageView(
-                      data: url,
-                      version: QrVersions.auto,
-                      size: 200,
-                      backgroundColor: Colors.white,
+                  : Center(
+                      child: QrImageView(
+                        data: url,
+                        version: QrVersions.auto,
+                        size: 200,
+                        backgroundColor: Colors.white,
+                      ),
                     ),
             ),
             const SizedBox(height: 14),

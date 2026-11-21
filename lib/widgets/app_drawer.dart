@@ -64,8 +64,8 @@ class AppDrawer extends StatelessWidget {
                   if (user.isAdmin)
                     _drawerItem(
                       context,
-                      Icons.person_add_alt_1_outlined,
-                      'Staff Requests',
+                      Icons.badge_outlined,
+                      'Staff',
                       'staff-requests',
                     ),
                   if (user.isAdmin)

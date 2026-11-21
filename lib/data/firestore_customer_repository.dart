@@ -786,6 +786,31 @@ class FirestoreCustomerRepository implements CustomerRepository {
   }
 
   @override
+  Stream<List<StaffRequest>> watchStaffList() {
+    return _auth.authStateChanges().asyncExpand((user) {
+      if (user == null) return Stream.value(const <StaffRequest>[]);
+      return Stream.fromFuture(_roleFor(user.uid)).asyncExpand((role) {
+        if (role != 'admin') return Stream.value(const <StaffRequest>[]);
+        return _firestore
+            .collection(kUsersCollection)
+            .where('role', isEqualTo: 'staff')
+            .where('approvalStatus', isEqualTo: 'approved')
+            .snapshots()
+            .map((snapshot) {
+              final staff =
+                  snapshot.docs.map(_staffRequestFromDocument).toList()
+                    ..sort(
+                      (a, b) => a.name.toLowerCase().compareTo(
+                        b.name.toLowerCase(),
+                      ),
+                    );
+              return staff;
+            });
+      });
+    });
+  }
+
+  @override
   Future<void> approveStaff(String uid) => _reviewStaff(uid, 'approved');
 
   @override

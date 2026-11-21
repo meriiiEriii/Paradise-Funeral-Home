@@ -54,6 +54,9 @@ abstract class CustomerRepository {
 
   Stream<List<StaffRequest>> watchStaffRequests();
 
+  /// Approved staff accounts (the Staff list tab).
+  Stream<List<StaffRequest>> watchStaffList();
+
   Future<void> approveStaff(String uid);
 
   Future<void> rejectStaff(String uid);

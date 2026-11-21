@@ -114,9 +114,9 @@ void main() {
     Future<void> openRoute(String label) async {
       await tester.tap(find.byTooltip('Open menu'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text(label));
+      await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text(label));
+      await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.tap(find.byTooltip('Back'));
@@ -124,7 +124,7 @@ void main() {
     }
 
     await openRoute('Payment');
-    await openRoute('Staff Requests');
+    await openRoute('Staff');
     await openRoute('Discount Approvals');
     await openRoute('Delayed Accounts');
     await openRoute('Completed / Archive');
@@ -153,9 +153,9 @@ void main() {
     Future<void> openRoute(String label) async {
       await tester.tap(find.byTooltip('Open menu'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text(label));
+      await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text(label));
+      await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.tap(find.byTooltip('Back'));
@@ -164,7 +164,7 @@ void main() {
 
     await openRoute('Search Customer');
     await openRoute('Payment');
-    await openRoute('Staff Requests');
+    await openRoute('Staff');
     await openRoute('Discount Approvals');
     await openRoute('Delayed Accounts');
     await openRoute('Completed / Archive');
@@ -205,9 +205,9 @@ void main() {
     Future<void> openRoute(String label) async {
       await tester.tap(find.byTooltip('Open menu'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text(label));
+      await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text(label));
+      await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.tap(find.byTooltip('Back'));
@@ -216,7 +216,7 @@ void main() {
 
     await openRoute('Search Customer');
     await openRoute('Payment');
-    await openRoute('Staff Requests');
+    await openRoute('Staff');
     await openRoute('Discount Approvals');
     await openRoute('Delayed Accounts');
     await openRoute('Completed / Archive');

@@ -73,6 +73,21 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   String get _normalizedContact =>
       _contactCtrl.text.trim().replaceAll(RegExp(r'\D'), '');
 
+  /// Capitalizes the first letter of every word ("juan dela cruz" ->
+  /// "Juan Dela Cruz").
+  String _titleCase(String value) {
+    final trimmed = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (trimmed.isEmpty) return trimmed;
+    return trimmed
+        .split(' ')
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : word[0].toUpperCase() + word.substring(1).toLowerCase(),
+        )
+        .join(' ');
+  }
+
   void _addItem() {
     setState(() => _items.add(_ItemEntry()));
   }
@@ -145,7 +160,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final customer = Customer(
       id: '',
       dateAdded: _dateStarted,
-      name: _nameCtrl.text.trim(),
+      name: _titleCase(_nameCtrl.text),
       address: _addressCtrl.text.trim(),
       contactNumber: _normalizedContact,
       package: _packageNameCtrl.text.trim().isEmpty
@@ -257,6 +272,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             'Full Name',
             _nameCtrl,
             Icons.person_outline_rounded,
+            textCapitalization: TextCapitalization.words,
             validator: (v) =>
                 (v?.trim().isEmpty ?? true) ? 'Name is required' : null,
           ),
@@ -588,12 +604,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     int maxLines = 1,
     TextInputType? keyboardType,
     String? hint,
+    TextCapitalization textCapitalization = TextCapitalization.none,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,

@@ -1,4 +1,4 @@
-enum PaymentStatus { fullyPaid, partiallyPaid, overdue }
+enum PaymentStatus { unpaid, partiallyPaid, overdue, fullyPaid }
 
 enum AccountStatus { active, delayed, completed }
 
@@ -80,6 +80,7 @@ class Customer {
 
   PaymentStatus get paymentStatus {
     if (remainingBalance <= 0) return PaymentStatus.fullyPaid;
+    if (amountPaid <= 0) return PaymentStatus.unpaid;
     if (DateTime.now().isAfter(dueDate)) return PaymentStatus.overdue;
     return PaymentStatus.partiallyPaid;
   }

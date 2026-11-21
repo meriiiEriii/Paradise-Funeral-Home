@@ -59,12 +59,14 @@ class StatusBadge extends StatelessWidget {
 
   _BadgeConfig _getConfig(AppPalette palette) {
     switch (status) {
-      case PaymentStatus.fullyPaid:
-        return _BadgeConfig(label: 'Fully Paid', color: palette.success);
+      case PaymentStatus.unpaid:
+        return _BadgeConfig(label: 'Unpaid', color: palette.muted);
       case PaymentStatus.partiallyPaid:
         return _BadgeConfig(label: 'Partial', color: palette.warning);
       case PaymentStatus.overdue:
         return _BadgeConfig(label: 'Overdue', color: palette.danger);
+      case PaymentStatus.fullyPaid:
+        return _BadgeConfig(label: 'Fully Paid', color: palette.success);
     }
   }
 }
