@@ -634,22 +634,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
             label: const Text('Customer QR'),
           )
         : null;
-    final backButton = OutlinedButton.icon(
-      onPressed: () {
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/dashboard');
-        }
-      },
-      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-      label: const Text('Back'),
-    );
 
     final primary = [?paymentButton, ?discountButton, ?pendingNotice, ?qrButton];
 
     if (primary.isEmpty) {
-      return SizedBox(width: double.infinity, child: backButton);
+      return const SizedBox.shrink();
     }
 
     return LayoutBuilder(
@@ -662,7 +651,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 button,
                 const SizedBox(height: 10),
               ],
-              backButton,
             ],
           );
         }
@@ -672,7 +660,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               Expanded(flex: 3, child: button),
               const SizedBox(width: 10),
             ],
-            Expanded(flex: 2, child: backButton),
           ],
         );
       },
