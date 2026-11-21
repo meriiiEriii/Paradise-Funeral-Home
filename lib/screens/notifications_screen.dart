@@ -109,16 +109,19 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   /// Staff registration notifications go straight to the Staff page.
+  ///
+  /// Uses [GoRouter.go] rather than [GoRouter.push]: replacing the stack can
+  /// never produce duplicate page keys, no matter what is underneath.
   void _openStaffRequest(AppNotification notification) {
     _markReadQuietly(notification);
-    _pushUnique('/staff-requests');
+    context.go('/staff-requests');
   }
 
   /// Discount request notifications go straight to the Discount Approvals
   /// page, where the request can be reviewed and approved or rejected.
   void _openApprovals(AppNotification notification) {
     _markReadQuietly(notification);
-    _pushUnique('/approvals');
+    context.go('/approvals');
   }
 
   /// Expands or collapses a plain notification. Read state is left untouched
