@@ -16,6 +16,7 @@ import 'screens/approvals_screen.dart';
 import 'screens/auth_screens.dart';
 import 'screens/completed_archive_screen.dart';
 import 'screens/customer_profile_screen.dart';
+import 'screens/customer_view_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/delayed_accounts_screen.dart';
 import 'screens/admin_login_dialog.dart';
@@ -119,6 +120,10 @@ class _CIPMSAppState extends State<CIPMSApp> {
       redirect: (context, state) {
         final location = state.matchedLocation;
         final atAuth = location == '/login' || location == '/register';
+
+        // The public customer receipt portal must be reachable without
+        // signing in, straight from a QR scan.
+        if (location.startsWith('/view')) return null;
 
         if (session.isInitializing) {
           return location == '/splash' ? null : '/splash';
@@ -243,6 +248,14 @@ class _CIPMSAppState extends State<CIPMSApp> {
             customerId: state.pathParameters['id'] ?? '',
             canRecordPayment: session.user != null,
             canRequestDiscount: session.user != null && !session.user!.isAdmin,
+            canShareQr: session.user != null,
+          ),
+        ),
+        GoRoute(
+          path: '/view/:id',
+          builder: (context, state) => CustomerViewScreen(
+            customerId: state.pathParameters['id'] ?? '',
+            viewKey: state.uri.queryParameters['k'] ?? '',
           ),
         ),
         GoRoute(

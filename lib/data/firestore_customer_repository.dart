@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../auth/app_user.dart';
 import '../auth/auth_constants.dart';
+import '../config/app_config.dart';
 import '../models/app_notification.dart';
 import '../models/customer.dart';
 import '../models/discount_request.dart';
@@ -700,6 +701,61 @@ class FirestoreCustomerRepository implements CustomerRepository {
     await _run(() async {
       await _notifications.doc(notificationId).update({
         'readBy': FieldValue.arrayRemove([user.uid]),
+      });
+    });
+  }
+
+  @override
+  Future<void> publishCustomerView(String customerId) async {
+    final user = _requireUser();
+    await _run(() async {
+      final customerSnapshot = await _customerRef(customerId).get();
+      if (!customerSnapshot.exists) {
+        throw const CustomerRepositoryException('Customer not found.');
+      }
+      final data = customerSnapshot.data()!;
+
+      final paymentsSnapshot =
+          await _customerRef(customerId).collection('payments').get();
+      final payments = paymentsSnapshot.docs
+          .map((doc) {
+            final payment = doc.data();
+            final recordedAt = payment['recordedAt'];
+            return {
+              'amountCentavos':
+                  (payment['amountCentavos'] as num?)?.toInt() ?? 0,
+              'balanceAfterCentavos':
+                  (payment['balanceAfterCentavos'] as num?)?.toInt() ?? 0,
+              'recordedAt':
+                  recordedAt is Timestamp ? recordedAt.toDate() : null,
+            };
+          })
+          .toList()
+        ..sort((a, b) {
+          final aDate = a['recordedAt'] as DateTime?;
+          final bDate = b['recordedAt'] as DateTime?;
+          if (aDate == null || bDate == null) return 0;
+          return bDate.compareTo(aDate);
+        });
+
+      final viewKey = customerViewKey(customerId);
+      await _firestore.collection('customerViews').doc('$customerId-$viewKey').set({
+        'customerId': customerId,
+        'name': data['name'] ?? '',
+        'package': data['package'] ?? '',
+        'items': data['items'] ?? const [],
+        'packageTotalCentavos':
+            (data['packageTotalCentavos'] as num?)?.toInt() ?? 0,
+        'approvedDiscountCentavos':
+            (data['approvedDiscountCentavos'] as num?)?.toInt() ?? 0,
+        'amountPaidCentavos': (data['amountPaidCentavos'] as num?)?.toInt() ?? 0,
+        'totalDueCentavos': (data['totalDueCentavos'] as num?)?.toInt() ?? 0,
+        'dateAdded': data['dateAdded'],
+        'dueDate': data['dueDate'],
+        'accountStatus': data['accountStatus'] ?? 'active',
+        'payments': payments.take(12).toList(),
+        'publishedAt': FieldValue.serverTimestamp(),
+        'publishedBy': user.uid,
       });
     });
   }

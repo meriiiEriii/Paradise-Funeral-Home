@@ -48,6 +48,10 @@ abstract class CustomerRepository {
 
   Future<void> markNotificationUnread(String notificationId);
 
+  /// Writes the public, view-only receipt document that the customer QR
+  /// code links to.
+  Future<void> publishCustomerView(String customerId);
+
   Stream<List<StaffRequest>> watchStaffRequests();
 
   Future<void> approveStaff(String uid);

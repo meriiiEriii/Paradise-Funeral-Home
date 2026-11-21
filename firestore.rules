@@ -371,7 +371,45 @@ service cloud.firestore {
           || (resource.data.audienceRole == 'staff' && isStaff())
         )
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
-        && request.resource.data.readBy == resource.data.readBy.concat([request.auth.uid]);
+        && (
+          // Marking as read: the caller's uid is appended.
+          request.resource.data.readBy == resource.data.readBy.concat([request.auth.uid])
+          // Marking as unread: the only possible removal is the caller's uid.
+          || (
+            resource.data.readBy.hasOnly(request.resource.data.readBy.concat([request.auth.uid]))
+            && request.resource.data.readBy.hasOnly(resource.data.readBy)
+            && request.resource.data.readBy.size() < resource.data.readBy.size()
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // Public, view-only receipt pages reached through customer QR codes.
+    // Documents are addressable only by an unguessable
+    // `<customerId>-<viewKey>` id; listing is blocked so the contents
+    // cannot be enumerated.
+    match /customerViews/{viewId} {
+      allow get: if true;
+      allow list: if false;
+
+      allow create, update: if (isAdmin() || isStaff())
+        && request.resource.data.keys().hasOnly([
+          'customerId',
+          'name',
+          'package',
+          'items',
+          'packageTotalCentavos',
+          'approvedDiscountCentavos',
+          'amountPaidCentavos',
+          'totalDueCentavos',
+          'dateAdded',
+          'dueDate',
+          'accountStatus',
+          'payments',
+          'publishedAt',
+          'publishedBy',
+        ]);
 
       allow delete: if false;
     }

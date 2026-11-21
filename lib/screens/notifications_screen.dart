@@ -26,6 +26,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
   bool _busy = false;
+  String? _expandedId;
 
   @override
   void initState() {
@@ -59,15 +60,22 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   Future<void> _setRead(AppNotification notification, bool read) async {
     final isRead = notification.isReadBy(widget.user);
-    if (read && !isRead) {
-      await widget.store.markNotificationRead(
-        notification.id,
-        widget.user.uid,
-      );
-    } else if (!read && isRead) {
-      await widget.store.markNotificationUnread(
-        notification.id,
-        widget.user.uid,
+    try {
+      if (read && !isRead) {
+        await widget.store.markNotificationRead(
+          notification.id,
+          widget.user.uid,
+        );
+      } else if (!read && isRead) {
+        await widget.store.markNotificationUnread(
+          notification.id,
+          widget.user.uid,
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update the notification: $error')),
       );
     }
   }
@@ -228,14 +236,23 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
-  Future<void> _open(AppNotification notification) async {
+  /// Expands or collapses a notification. The details (discount amount,
+  /// reason) and the Approve/Reject actions only appear once the notification
+  /// is opened. Read state is left untouched so the tile does not jump
+  /// between the Unread/Read tabs while it is being reviewed.
+  void _toggle(AppNotification notification) {
+    final wasExpanded = _expandedId == notification.id;
+    setState(() {
+      _expandedId = wasExpanded ? null : notification.id;
+    });
+  }
+
+  void _openLinked(AppNotification notification) {
     if (!notification.isReadBy(widget.user)) {
-      await widget.store.markNotificationRead(
-        notification.id,
-        widget.user.uid,
-      );
+      widget.store
+          .markNotificationRead(notification.id, widget.user.uid)
+          .catchError((_) {});
     }
-    if (!mounted) return;
     if (notification.type == AppNotificationType.staffRegistered) {
       context.push('/staff-requests');
       return;
@@ -329,7 +346,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       ),
     );
   }
-
   Widget _buildTile(AppNotification notification) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -337,10 +353,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     final unread = !notification.isReadBy(widget.user);
     final config = _iconConfig(notification.type, palette);
     final request = _requestFor(notification);
-    final showStaffActions = widget.user.isAdmin &&
+    final expanded = _expandedId == notification.id;
+    final canReviewStaff =
+        widget.user.isAdmin &&
         notification.type == AppNotificationType.staffRegistered &&
         (notification.staffUid?.isNotEmpty ?? false);
-    final showDiscountDetails =
+    final canReviewDiscount =
         widget.user.isAdmin &&
         notification.type == AppNotificationType.discountRequested &&
         request != null;
@@ -348,7 +366,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => _open(notification),
+        onTap: () => _toggle(notification),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -453,17 +471,43 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   ),
                 ],
               ),
-              if (showDiscountDetails) ...[
+              if (expanded) ...[
                 const SizedBox(height: 12),
-                _buildDiscountDetails(request),
-              ],
-              if (showStaffActions) ...[
-                const SizedBox(height: 12),
-                _buildStaffActions(notification),
+                if (canReviewDiscount)
+                  _buildDiscountDetails(request)
+                else if (canReviewStaff)
+                  _buildStaffActions(notification)
+                else
+                  _buildExpandedInfo(notification),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _openLinked(notification),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                    label: Text(
+                      notification.type == AppNotificationType.staffRegistered
+                          ? 'Open staff requests'
+                          : 'View customer',
+                    ),
+                  ),
+                ),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedInfo(AppNotification notification) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+    return Text(
+      'Tap "View customer" to review the account this notification is about.',
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: palette.muted,
+        fontSize: 11.5,
       ),
     );
   }

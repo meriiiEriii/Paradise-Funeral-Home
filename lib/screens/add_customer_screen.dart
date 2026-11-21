@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/customer.dart';
 import '../data/customer_store.dart';
 import '../theme/app_theme.dart';
+import '../utils/validators.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
 
@@ -39,7 +40,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _packageNameCtrl = TextEditingController();
   final _items = <_ItemEntry>[];
   DateTime _dateStarted = DateTime.now();
-  DateTime _dueDate = DateTime.now().add(const Duration(days: 30));
+  DateTime _dueDate = DateTime.now().add(const Duration(days: 10));
   bool _isSubmitting = false;
 
   @override
@@ -68,6 +69,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     }
     return total;
   }
+
+  String get _normalizedContact =>
+      _contactCtrl.text.trim().replaceAll(RegExp(r'\D'), '');
 
   void _addItem() {
     setState(() => _items.add(_ItemEntry()));
@@ -143,7 +147,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       dateAdded: _dateStarted,
       name: _nameCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
-      contactNumber: _contactCtrl.text.trim(),
+      contactNumber: _normalizedContact,
       package: _packageNameCtrl.text.trim().isEmpty
           ? 'Custom Package'
           : _packageNameCtrl.text.trim(),
@@ -271,9 +275,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             _contactCtrl,
             Icons.phone_outlined,
             keyboardType: TextInputType.phone,
-            validator: (v) => (v?.trim().isEmpty ?? true)
-                ? 'Contact number is required'
-                : null,
+            hint: '09171234567',
+            validator: (v) => validateContactNumber(v),
           ),
         ],
       ),
@@ -584,6 +587,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     IconData icon, {
     int maxLines = 1,
     TextInputType? keyboardType,
+    String? hint,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
@@ -593,6 +597,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
+        hintText: hint,
         alignLabelWithHint: maxLines > 1,
         prefixIcon: Icon(icon, size: 19),
       ),

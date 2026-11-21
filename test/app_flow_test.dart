@@ -8,6 +8,7 @@ import 'package:inventory/data/customer_store.dart';
 import 'package:inventory/main.dart';
 import 'package:inventory/models/app_notification.dart';
 import 'package:inventory/models/customer.dart';
+import 'package:inventory/utils/validators.dart';
 
 import 'support/fake_auth_session.dart';
 
@@ -296,6 +297,67 @@ void main() {
       await store.markNotificationRead(notification.id, adminUser.uid);
       expect(store.unreadNotificationCount(adminUser), 0);
     });
+
+    test('notifications can be marked unread per user', () async {
+      final store = CustomerStore();
+      await store.addCustomer(_customer(id: 'CUS-0001', cost: 1000));
+
+      await store.requestDiscount('CUS-0001', 100, 'Loyal client');
+      final notification = store.notifications.first;
+      await store.markNotificationRead(notification.id, adminUser.uid);
+      expect(store.unreadNotificationCount(adminUser), 0);
+
+      await store.markNotificationUnread(notification.id, adminUser.uid);
+      expect(store.unreadNotificationCount(adminUser), 1);
+    });
+
+    test('customer lists show the newest customers first', () async {
+      final store = CustomerStore();
+      await store.addCustomer(
+        Customer(
+          id: 'CUS-0001',
+          name: 'Older Customer',
+          address: 'Test Address',
+          contactNumber: '09170000001',
+          package: 'Test Package',
+          items: [PackageItem(name: 'Item', amount: 100)],
+          dateAdded: DateTime(2026, 1, 1),
+          dueDate: DateTime(2027, 2, 1),
+        ),
+      );
+      await store.addCustomer(
+        Customer(
+          id: 'CUS-0002',
+          name: 'Newest Customer',
+          address: 'Test Address',
+          contactNumber: '09170000002',
+          package: 'Test Package',
+          items: [PackageItem(name: 'Item', amount: 100)],
+          dateAdded: DateTime(2026, 3, 1),
+          dueDate: DateTime(2027, 3, 15),
+        ),
+      );
+
+      expect(store.allCustomers.first.id, 'CUS-0002');
+      expect(store.activeCustomers.first.id, 'CUS-0002');
+      expect(store.searchActiveCustomers('').first.id, 'CUS-0002');
+      expect(store.searchAllCustomers('').first.id, 'CUS-0002');
+    });
+  });
+
+  group('validateContactNumber', () {
+    test('accepts 11-digit Philippine numbers', () {
+      expect(validateContactNumber('09171234567'), isNull);
+      expect(validateContactNumber('0917-123-4567'), isNull);
+      expect(validateContactNumber('0917 123 4567'), isNull);
+    });
+
+    test('rejects malformed numbers with clear messages', () {
+      expect(validateContactNumber(''), 'Contact number is required.');
+      expect(validateContactNumber('0917123456'), contains('11 digits'));
+      expect(validateContactNumber('639171234567'), contains('11 digits'));
+      expect(validateContactNumber('02123456789'), contains('start with 09'));
+    });
   });
 
   group('AppPreferences', () {
@@ -427,6 +489,56 @@ void main() {
 
       expect(store.getCustomerById('CUS-0001')!.approvedDiscount, 200);
       expect(store.pendingDiscountRequestCount, 0);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('notification details and actions only show when opened', (
+      tester,
+    ) async {
+      final store = _seedStore();
+      await store.requestDiscount('CUS-0001', 200, 'Goodwill discount');
+
+      await _pumpApp(tester, store, initialLocation: '/notifications');
+
+      // Collapsed: no approve/reject actions or details visible.
+      expect(find.text('Approve'), findsNothing);
+      expect(find.textContaining('Goodwill discount'), findsNothing);
+
+      // Opening the notification reveals the details and actions.
+      await tester.tap(find.text('New discount request'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Goodwill discount'), findsWidgets);
+      expect(find.text('Approve'), findsOneWidget);
+      expect(find.text('Reject'), findsOneWidget);
+
+      // Approving works from the notification itself.
+      await tester.tap(find.text('Approve'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Approve').last);
+      await tester.pumpAndSettle();
+
+      expect(store.getCustomerById('CUS-0001')!.approvedDiscount, 200);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('read notifications can be marked unread', (tester) async {
+      final store = _seedStore();
+      await store.requestDiscount('CUS-0001', 100, 'Loyal client');
+      final notification = store.notifications.first;
+      await store.markNotificationRead(notification.id, adminUser.uid);
+      expect(store.unreadNotificationCount(adminUser), 0);
+
+      await _pumpApp(tester, store, initialLocation: '/notifications');
+      expect(find.text('Read (1)'), findsOneWidget);
+
+      await tester.tap(find.text('Read (1)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Notification options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mark as unread'));
+      await tester.pumpAndSettle();
+
+      expect(store.unreadNotificationCount(adminUser), 1);
       expect(tester.takeException(), isNull);
     });
 

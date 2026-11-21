@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 
 import '../data/customer_store.dart';
 import '../models/customer.dart';
+import '../models/discount_request.dart';
 import '../theme/app_theme.dart';
+import '../widgets/customer_qr_dialog.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/section_card.dart';
 import '../widgets/status_badge.dart';
@@ -14,6 +16,7 @@ class CustomerProfileScreen extends StatefulWidget {
   final String customerId;
   final bool canRecordPayment;
   final bool canRequestDiscount;
+  final bool canShareQr;
 
   const CustomerProfileScreen({
     super.key,
@@ -21,6 +24,7 @@ class CustomerProfileScreen extends StatefulWidget {
     required this.customerId,
     this.canRecordPayment = false,
     this.canRequestDiscount = false,
+    this.canShareQr = false,
   });
 
   @override
@@ -523,36 +527,51 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           ],
           if (customer.hasPendingDiscountRequest) ...[
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: palette.warning.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(
-                  color: palette.warning.withValues(alpha: 0.22),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.hourglass_top_rounded,
-                    size: 15,
-                    color: palette.warning,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'A discount request is awaiting admin approval.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: palette.warning,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ),
-                ],
+            _buildPendingDiscountBanner(context),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingDiscountBanner(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+
+    DiscountRequest? pending;
+    for (final request in widget.store.discountRequests) {
+      if (request.id == customer.pendingDiscountRequestId) {
+        pending = request;
+        break;
+      }
+    }
+
+    final details = pending == null
+        ? 'A discount request is awaiting admin approval.'
+        : 'Discount request: ₱${pending.amount.toStringAsFixed(2)} — '
+            '"${pending.reason}". Awaiting admin approval.';
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: palette.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: palette.warning.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.hourglass_top_rounded, size: 15, color: palette.warning),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              details,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: palette.warning,
+                fontSize: 11.5,
+                height: 1.4,
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -604,6 +623,17 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
             label: const Text('Discount pending'),
           )
         : null;
+    final qrButton = widget.canShareQr
+        ? OutlinedButton.icon(
+            onPressed: () => showCustomerQrDialog(
+              context,
+              customer: customer,
+              store: widget.store,
+            ),
+            icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+            label: const Text('Customer QR'),
+          )
+        : null;
     final backButton = OutlinedButton.icon(
       onPressed: () {
         if (context.canPop()) {
@@ -616,7 +646,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       label: const Text('Back'),
     );
 
-    final primary = [?paymentButton, ?discountButton, ?pendingNotice];
+    final primary = [?paymentButton, ?discountButton, ?pendingNotice, ?qrButton];
 
     if (primary.isEmpty) {
       return SizedBox(width: double.infinity, child: backButton);

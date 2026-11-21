@@ -32,18 +32,28 @@ class CustomerStore extends ChangeNotifier {
 
   bool get isShared => _repository != null;
 
-  List<Customer> get allCustomers => List.unmodifiable(_customers);
+  static int _newestFirst(Customer a, Customer b) =>
+      b.dateAdded.compareTo(a.dateAdded);
 
-  List<Customer> get activeCustomers =>
-      _customers.where((c) => c.accountStatus == AccountStatus.active).toList();
+  List<Customer> get allCustomers {
+    final list = [..._customers]..sort(_newestFirst);
+    return List.unmodifiable(list);
+  }
+
+  List<Customer> get activeCustomers => _customers
+      .where((c) => c.accountStatus == AccountStatus.active)
+      .toList()
+    ..sort(_newestFirst);
 
   List<Customer> get delayedCustomers => _customers
       .where((c) => c.accountStatus == AccountStatus.delayed)
-      .toList();
+      .toList()
+    ..sort(_newestFirst);
 
   List<Customer> get completedCustomers => _customers
       .where((c) => c.accountStatus == AccountStatus.completed)
-      .toList();
+      .toList()
+    ..sort(_newestFirst);
 
   List<DiscountRequest> get discountRequests =>
       List.unmodifiable(_discountRequests);
@@ -219,9 +229,10 @@ class CustomerStore extends ChangeNotifier {
   }
 
   List<Customer> searchActiveCustomers(String query) {
-    if (query.isEmpty) return activeCustomers;
+    final base = activeCustomers;
+    if (query.isEmpty) return base;
     final q = query.toLowerCase();
-    return activeCustomers
+    return base
         .where(
           (c) =>
               c.name.toLowerCase().contains(q) ||
@@ -232,9 +243,10 @@ class CustomerStore extends ChangeNotifier {
   }
 
   List<Customer> searchAllCustomers(String query) {
-    if (query.isEmpty) return _customers;
+    final base = allCustomers;
+    if (query.isEmpty) return base;
     final q = query.toLowerCase();
-    return _customers
+    return base
         .where(
           (c) =>
               c.name.toLowerCase().contains(q) ||
@@ -280,6 +292,7 @@ class CustomerStore extends ChangeNotifier {
   Future<void> recordPayment(String customerId, double amount) async {
     if (_repository != null) {
       await _repository.recordPayment(customerId, amount);
+      await _republishCustomerViewQuietly(customerId);
       return;
     }
     final index = _customers.indexWhere((c) => c.id == customerId);
@@ -449,6 +462,14 @@ class CustomerStore extends ChangeNotifier {
   Future<void> approveDiscountRequest(String requestId, {String? note}) async {
     if (_repository != null) {
       await _repository.approveDiscountRequest(requestId, note: note);
+      DiscountRequest? reviewed;
+      for (final r in _discountRequests) {
+        if (r.id == requestId) {
+          reviewed = r;
+          break;
+        }
+      }
+      await _republishCustomerViewQuietly(reviewed?.customerId ?? '');
       return;
     }
     final requestIndex = _discountRequests.indexWhere(
@@ -598,6 +619,23 @@ class CustomerStore extends ChangeNotifier {
       readBy: notification.readBy.where((id) => id != uid).toList(),
     );
     notifyListeners();
+  }
+
+  /// Publishes (or refreshes) the public, view-only receipt page that the
+  /// customer's QR code links to.
+  Future<void> publishCustomerView(String customerId) async {
+    if (_repository == null) return;
+    await _repository.publishCustomerView(customerId);
+  }
+
+  Future<void> _republishCustomerViewQuietly(String customerId) async {
+    if (customerId.isEmpty) return;
+    try {
+      await publishCustomerView(customerId);
+    } catch (_) {
+      // The receipt page stays stale until the QR is shown again; payments
+      // must not fail because of this.
+    }
   }
 
   String _nextDiscountRequestId() {
