@@ -1,0 +1,451 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isStaff() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff'
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approvalStatus == 'approved'
+          || !('approvalStatus' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data)
+        );
+    }
+
+    function validAmounts(data) {
+      return data.packageTotalCentavos is int
+        && data.packageTotalCentavos >= 0
+        && data.approvedDiscountCentavos is int
+        && data.approvedDiscountCentavos >= 0
+        && data.amountPaidCentavos is int
+        && data.amountPaidCentavos >= 0
+        && data.totalDueCentavos is int
+        && data.totalDueCentavos >= 0
+        && data.totalDueCentavos == (
+          data.packageTotalCentavos - data.approvedDiscountCentavos < 0
+            ? 0
+            : data.packageTotalCentavos - data.approvedDiscountCentavos
+        )
+        && data.amountPaidCentavos <= data.totalDueCentavos;
+    }
+
+    function customerPath(customerId) {
+      return /databases/$(database)/documents/customers/$(customerId);
+    }
+
+    function requestPath(requestId) {
+      return /databases/$(database)/documents/discountRequests/$(requestId);
+    }
+
+    function userPath(userId) {
+      return /databases/$(database)/documents/users/$(userId);
+    }
+
+    function validCustomer(data) {
+      return data.name is string
+        && data.name.size() > 0
+        && data.address is string
+        && data.contactNumber is string
+        && data.package is string
+        && data.items is list
+        && data.remarks is string
+        && data.dateAdded is timestamp
+        && data.dueDate is timestamp
+        && (data.lastPaymentDate == null || data.lastPaymentDate is timestamp)
+        && data.accountStatus in ['active', 'delayed', 'completed']
+        && validAmounts(data)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.createdBy == request.auth.uid
+        && data.updatedBy == request.auth.uid
+        && (!('pendingDiscountRequestId' in data)
+          || data.pendingDiscountRequestId is string)
+        && (!('importedAt' in data) || data.importedAt is timestamp)
+        && (!('importedBy' in data) || data.importedBy is string);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 0
+        && request.resource.data.createdAt is timestamp
+        && (
+          (
+            request.resource.data.role == 'staff'
+            && request.resource.data.approvalStatus == 'pending'
+            && request.resource.data.keys().hasOnly([
+              'name',
+              'email',
+              'role',
+              'approvalStatus',
+              'createdAt',
+            ])
+          ) || (
+            request.resource.data.role == 'admin'
+            && request.resource.data.approvalStatus == 'approved'
+            && request.resource.data.accessCode == 'PARADISE-ADMIN-2026'
+            && request.resource.data.keys().hasOnly([
+              'name',
+              'email',
+              'role',
+              'approvalStatus',
+              'accessCode',
+              'createdAt',
+            ])
+          )
+        );
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /customers/{customerId} {
+      allow read: if isAdmin() || isStaff();
+
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'address',
+          'contactNumber',
+          'package',
+          'items',
+          'amountPaidCentavos',
+          'approvedDiscountCentavos',
+          'packageTotalCentavos',
+          'totalDueCentavos',
+          'remarks',
+          'dateAdded',
+          'dueDate',
+          'accountStatus',
+          'lastPaymentDate',
+          'pendingDiscountRequestId',
+          'createdAt',
+          'createdBy',
+          'updatedAt',
+          'updatedBy',
+          'importedAt',
+          'importedBy',
+        ])
+        && validCustomer(request.resource.data);
+
+      allow update: if (
+        isAdmin()
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.updatedAt is timestamp
+          && validAmounts(request.resource.data)
+          && request.resource.data.accountStatus in ['active', 'delayed', 'completed']
+      ) || (
+        isStaff()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'amountPaidCentavos',
+            'lastPaymentDate',
+            'lastPaymentId',
+            'accountStatus',
+            'updatedAt',
+            'updatedBy',
+          ])
+          && validAmounts(request.resource.data)
+          && request.resource.data.amountPaidCentavos > resource.data.amountPaidCentavos
+          && request.resource.data.amountPaidCentavos <= request.resource.data.totalDueCentavos
+          && request.resource.data.lastPaymentId is string
+          && request.resource.data.lastPaymentId.size() > 0
+          && request.resource.data.lastPaymentDate is timestamp
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.updatedAt is timestamp
+          && (
+            request.resource.data.accountStatus == resource.data.accountStatus
+              || (
+                request.resource.data.accountStatus == 'completed'
+                  && request.resource.data.amountPaidCentavos >= request.resource.data.totalDueCentavos
+              )
+          )
+          && !exists(/databases/$(database)/documents/customers/$(customerId)/payments/$(request.resource.data.lastPaymentId))
+          && getAfter(/databases/$(database)/documents/customers/$(customerId)/payments/$(request.resource.data.lastPaymentId)).data.customerId == customerId
+          && getAfter(/databases/$(database)/documents/customers/$(customerId)/payments/$(request.resource.data.lastPaymentId)).data.amountCentavos == request.resource.data.amountPaidCentavos - resource.data.amountPaidCentavos
+          && getAfter(/databases/$(database)/documents/customers/$(customerId)/payments/$(request.resource.data.lastPaymentId)).data.balanceAfterCentavos == request.resource.data.totalDueCentavos - request.resource.data.amountPaidCentavos
+          && getAfter(/databases/$(database)/documents/customers/$(customerId)/payments/$(request.resource.data.lastPaymentId)).data.recordedBy.uid == request.auth.uid
+      ) || (
+        isStaff()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'pendingDiscountRequestId',
+            'updatedAt',
+            'updatedBy',
+          ])
+          && request.resource.data.pendingDiscountRequestId is string
+          && request.resource.data.pendingDiscountRequestId.size() > 0
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.updatedAt is timestamp
+          && !('pendingDiscountRequestId' in resource.data)
+          && getAfter(requestPath(request.resource.data.pendingDiscountRequestId)).data.customerId == customerId
+          && getAfter(requestPath(request.resource.data.pendingDiscountRequestId)).data.status == 'pending'
+          && getAfter(requestPath(request.resource.data.pendingDiscountRequestId)).data.requestedBy.uid == request.auth.uid
+      );
+
+      allow delete: if isAdmin();
+
+      match /payments/{paymentId} {
+        allow read: if isAdmin() || isStaff();
+
+        allow create: if isSignedIn()
+          && request.resource.data.keys().hasOnly([
+            'customerId',
+            'amountCentavos',
+            'balanceAfterCentavos',
+            'note',
+            'recordedBy',
+            'recordedAt',
+          ])
+          && request.resource.data.customerId == customerId
+          && request.resource.data.amountCentavos is int
+          && request.resource.data.amountCentavos > 0
+          && request.resource.data.balanceAfterCentavos is int
+          && request.resource.data.balanceAfterCentavos >= 0
+          && request.resource.data.note is string
+          && request.resource.data.recordedBy.keys().hasOnly(['uid', 'email'])
+          && request.resource.data.recordedBy.uid == request.auth.uid
+          && request.resource.data.recordedBy.email is string
+          && request.resource.data.recordedAt is timestamp
+          && getAfter(/databases/$(database)/documents/customers/$(customerId)).data.lastPaymentId == paymentId
+          && getAfter(/databases/$(database)/documents/customers/$(customerId)).data.amountPaidCentavos == get(/databases/$(database)/documents/customers/$(customerId)).data.amountPaidCentavos + request.resource.data.amountCentavos
+          && getAfter(/databases/$(database)/documents/customers/$(customerId)).data.totalDueCentavos - getAfter(/databases/$(database)/documents/customers/$(customerId)).data.amountPaidCentavos == request.resource.data.balanceAfterCentavos;
+
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /discountRequests/{requestId} {
+      allow read: if (isAdmin() || isStaff())
+        && (isAdmin() || resource.data.requestedBy.uid == request.auth.uid);
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'customerId',
+          'customerName',
+          'amountCentavos',
+          'reason',
+          'status',
+          'requestedBy',
+          'requestedAt',
+          'reviewedBy',
+          'reviewedAt',
+          'reviewNote',
+        ])
+        && request.resource.data.customerId is string
+        && request.resource.data.customerName is string
+        && request.resource.data.amountCentavos is int
+        && request.resource.data.amountCentavos > 0
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.status == 'pending'
+        && request.resource.data.requestedBy.keys().hasOnly(['uid', 'email', 'name'])
+        && request.resource.data.requestedBy.uid == request.auth.uid
+        && request.resource.data.requestedBy.email is string
+        && request.resource.data.requestedAt is timestamp
+        && exists(customerPath(request.resource.data.customerId))
+        && !('pendingDiscountRequestId' in get(customerPath(request.resource.data.customerId)).data)
+        && getAfter(customerPath(request.resource.data.customerId)).data.pendingDiscountRequestId == requestId
+        && getAfter(customerPath(request.resource.data.customerId)).data.diff(get(customerPath(request.resource.data.customerId)).data).affectedKeys().hasOnly([
+          'pendingDiscountRequestId',
+          'updatedAt',
+          'updatedBy',
+        ])
+        && getAfter(customerPath(request.resource.data.customerId)).data.updatedBy == request.auth.uid
+        && get(customerPath(request.resource.data.customerId)).data.amountPaidCentavos < get(customerPath(request.resource.data.customerId)).data.totalDueCentavos
+        && request.resource.data.amountCentavos <= get(customerPath(request.resource.data.customerId)).data.totalDueCentavos - get(customerPath(request.resource.data.customerId)).data.amountPaidCentavos;
+
+      allow update: if isAdmin()
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'reviewedBy',
+          'reviewedAt',
+          'reviewNote',
+        ])
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.reviewedBy.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.reviewedBy.uid == request.auth.uid
+        && request.resource.data.reviewedAt is timestamp
+        && request.resource.data.reviewNote is string
+        && getAfter(customerPath(resource.data.customerId)).data.updatedBy == request.auth.uid
+        && (
+          (
+            request.resource.data.status == 'approved'
+            && getAfter(customerPath(resource.data.customerId)).data.approvedDiscountCentavos == get(customerPath(resource.data.customerId)).data.approvedDiscountCentavos + resource.data.amountCentavos
+            && getAfter(customerPath(resource.data.customerId)).data.totalDueCentavos == (
+              get(customerPath(resource.data.customerId)).data.packageTotalCentavos - get(customerPath(resource.data.customerId)).data.approvedDiscountCentavos - resource.data.amountCentavos < 0
+                ? 0
+                : get(customerPath(resource.data.customerId)).data.packageTotalCentavos - get(customerPath(resource.data.customerId)).data.approvedDiscountCentavos - resource.data.amountCentavos
+            )
+            && resource.data.amountCentavos <= get(customerPath(resource.data.customerId)).data.totalDueCentavos - get(customerPath(resource.data.customerId)).data.amountPaidCentavos
+            && !('pendingDiscountRequestId' in getAfter(customerPath(resource.data.customerId)).data)
+          ) || (
+            request.resource.data.status == 'rejected'
+            && !('pendingDiscountRequestId' in getAfter(customerPath(resource.data.customerId)).data)
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if (isAdmin() || isStaff())
+        && (
+          resource.data.recipientUid == request.auth.uid
+          || (resource.data.audienceRole == 'admin' && isAdmin())
+          || (resource.data.audienceRole == 'staff' && isStaff())
+        );
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'type',
+          'title',
+          'message',
+          'audienceRole',
+          'recipientUid',
+          'customerId',
+          'requestId',
+          'staffUid',
+          'createdBy',
+          'createdAt',
+          'readBy',
+        ])
+        && request.resource.data.type in [
+          'discountRequested',
+          'discountApproved',
+          'discountRejected',
+          'paymentCompleted',
+          'staffRegistered',
+        ]
+        && request.resource.data.title is string
+        && request.resource.data.message is string
+        && request.resource.data.customerId is string
+        && request.resource.data.createdBy.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.createdBy.uid == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.readBy is list
+        && request.resource.data.readBy.size() == 0
+        && (
+          request.resource.data.audienceRole == 'admin'
+          || request.resource.data.recipientUid is string
+        )
+        && (
+          (
+            request.resource.data.type == 'paymentCompleted'
+            && getAfter(customerPath(request.resource.data.customerId)).data.amountPaidCentavos >= getAfter(customerPath(request.resource.data.customerId)).data.totalDueCentavos
+          ) || (
+            request.resource.data.type == 'discountRequested'
+            && request.resource.data.audienceRole == 'admin'
+            && getAfter(requestPath(request.resource.data.requestId)).data.requestedBy.uid == request.auth.uid
+            && getAfter(requestPath(request.resource.data.requestId)).data.status == 'pending'
+          ) || (
+            request.resource.data.type in ['discountApproved', 'discountRejected']
+            && isAdmin()
+            && request.resource.data.recipientUid == getAfter(requestPath(request.resource.data.requestId)).data.requestedBy.uid
+            && getAfter(requestPath(request.resource.data.requestId)).data.status in ['approved', 'rejected']
+          ) || (
+            request.resource.data.type == 'staffRegistered'
+            && request.resource.data.audienceRole == 'admin'
+            && request.resource.data.createdBy.uid == request.auth.uid
+            && getAfter(userPath(request.resource.data.staffUid)).data.role == 'staff'
+            && getAfter(userPath(request.resource.data.staffUid)).data.approvalStatus == 'pending'
+          )
+        );
+
+      allow update: if isSignedIn()
+        && (
+          resource.data.recipientUid == request.auth.uid
+          || (resource.data.audienceRole == 'admin' && isAdmin())
+          || (resource.data.audienceRole == 'staff' && isStaff())
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
+        && request.resource.data.readBy == resource.data.readBy.concat([request.auth.uid]);
+
+      allow delete: if false;
+    }
+
+    match /counters/customers {
+      allow read: if isAdmin();
+
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['lastId'])
+        && request.resource.data.lastId is int
+        && request.resource.data.lastId >= 1;
+
+      allow update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['lastId'])
+        && request.resource.data.lastId is int
+        && request.resource.data.lastId >= resource.data.lastId;
+
+      allow delete: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+
+      allow create: if isSignedIn()
+        && (
+          isAdmin()
+          || (
+            isStaff()
+            && request.resource.data.action in ['payment_recorded', 'discount_requested']
+          )
+        )
+        && request.resource.data.keys().hasOnly([
+          'action',
+          'actorUid',
+          'actorEmail',
+          'customerId',
+          'paymentId',
+          'requestId',
+          'reason',
+          'amountCentavos',
+          'balanceAfterCentavos',
+          'dueDate',
+          'count',
+          'paymentCount',
+          'createdAt',
+        ])
+        && request.resource.data.action is string
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorEmail is string
+        && request.resource.data.createdAt is timestamp
+        && (!('customerId' in request.resource.data)
+          || request.resource.data.customerId is string)
+        && (!('paymentId' in request.resource.data)
+          || request.resource.data.paymentId is string)
+        && (!('requestId' in request.resource.data)
+          || request.resource.data.requestId is string)
+        && (!('reason' in request.resource.data)
+          || request.resource.data.reason is string)
+        && (!('amountCentavos' in request.resource.data)
+          || request.resource.data.amountCentavos is int)
+        && (!('balanceAfterCentavos' in request.resource.data)
+          || request.resource.data.balanceAfterCentavos is int)
+        && (!('dueDate' in request.resource.data)
+          || request.resource.data.dueDate is timestamp)
+        && (!('count' in request.resource.data)
+          || request.resource.data.count is int)
+        && (!('paymentCount' in request.resource.data)
+          || request.resource.data.paymentCount is int);
+
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
