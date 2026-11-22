@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -97,7 +97,7 @@ class _CustomerViewScreenState extends State<CustomerViewScreen> {
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Text(
-            'Paradise Funeral Home · Management System',
+            'Paradise Funeral Home Â· Management System',
             textAlign: TextAlign.center,
             style: theme.textTheme.labelSmall?.copyWith(
               color: palette.muted,
@@ -188,7 +188,7 @@ class _CustomerViewScreenState extends State<CustomerViewScreen> {
                     child: Text(
                       'Paradise Funeral Home',
                       style: TextStyle(
-                        fontFamily: 'Bitter',
+                        fontFamily: 'Lora',
                         color: Colors.white,
                         fontSize: 19,
                         fontWeight: FontWeight.w700,
@@ -199,7 +199,7 @@ class _CustomerViewScreenState extends State<CustomerViewScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Official account receipt · view only',
+                'Official account receipt Â· view only',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 11,
@@ -414,7 +414,7 @@ class _CustomerViewScreenState extends State<CustomerViewScreen> {
   }
 
   String _peso(int centavos) =>
-      '₱${(centavos / 100).toStringAsFixed(2)}';
+      'â‚±${(centavos / 100).toStringAsFixed(2)}';
 
   String _statusLabel(String status) {
     switch (status) {

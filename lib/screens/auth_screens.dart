@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/app_user.dart';
@@ -623,7 +623,7 @@ class AuthHeader extends StatelessWidget {
           title,
           textAlign: TextAlign.center,
           style: theme.textTheme.titleLarge?.copyWith(
-            fontFamily: 'Bitter',
+            fontFamily: 'Lora',
             fontWeight: FontWeight.w700,
             color: scheme.onSurface,
           ),

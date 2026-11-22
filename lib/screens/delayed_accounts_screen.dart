@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/customer.dart';
@@ -109,7 +109,7 @@ class _DelayedAccountsScreenState extends State<DelayedAccountsScreen> {
                     Text(
                       '$count delayed account${count != 1 ? 's' : ''}',
                       style: const TextStyle(
-                        fontFamily: 'Bitter',
+                        fontFamily: 'Lora',
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -287,7 +287,7 @@ class _DelayedAccountsScreenState extends State<DelayedAccountsScreen> {
                     children: [
                       _detail(
                         'Balance',
-                        '₱${customer.remainingBalance.toStringAsFixed(2)}',
+                        'â‚±${customer.remainingBalance.toStringAsFixed(2)}',
                         color: palette.danger,
                         bold: true,
                         alignEnd: true,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/customer.dart';
 import '../data/customer_store.dart';
@@ -315,7 +315,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
         ),
         child: Text(
-          '₱${_totalCost.toStringAsFixed(2)}',
+          'â‚±${_totalCost.toStringAsFixed(2)}',
           style: theme.textTheme.labelSmall?.copyWith(
             color: scheme.primary,
             fontWeight: FontWeight.w700,
@@ -378,7 +378,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final amountField = TextFormField(
       controller: item.amountCtrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: const InputDecoration(labelText: 'Amount', prefixText: '₱ '),
+      decoration: const InputDecoration(labelText: 'Amount', prefixText: 'â‚± '),
       onChanged: (_) => setState(() {}),
       validator: (v) {
         if (v?.trim().isEmpty ?? true) return 'Required';
@@ -511,9 +511,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         ),
                       ),
                       Text(
-                        '₱${_totalCost.toStringAsFixed(2)}',
+                        'â‚±${_totalCost.toStringAsFixed(2)}',
                         style: theme.textTheme.titleMedium?.copyWith(
-                          fontFamily: 'Bitter',
+                          fontFamily: 'Lora',
                           fontWeight: FontWeight.w700,
                           color: scheme.primary,
                         ),

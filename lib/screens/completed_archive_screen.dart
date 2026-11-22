@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/customer.dart';
@@ -109,7 +109,7 @@ class _CompletedArchiveScreenState extends State<CompletedArchiveScreen> {
                     Text(
                       '$count archived record${count != 1 ? 's' : ''}',
                       style: const TextStyle(
-                        fontFamily: 'Bitter',
+                        fontFamily: 'Lora',
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -295,13 +295,13 @@ class _CompletedArchiveScreenState extends State<CompletedArchiveScreen> {
                     children: [
                       _detail(
                         'Total due',
-                        '₱${customer.totalDue.toStringAsFixed(2)}',
+                        'â‚±${customer.totalDue.toStringAsFixed(2)}',
                         alignEnd: true,
                       ),
                       const SizedBox(height: 6),
                       _detail(
                         'Amount paid',
-                        '₱${customer.amountPaid.toStringAsFixed(2)}',
+                        'â‚±${customer.amountPaid.toStringAsFixed(2)}',
                         color: palette.success,
                         bold: true,
                         alignEnd: true,

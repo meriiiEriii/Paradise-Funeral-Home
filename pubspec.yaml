@@ -76,36 +76,29 @@ flutter:
   # https://flutter.dev/to/asset-from-package
 
   fonts:
-    - family: Poppins
+    - family: PlusJakartaSans
       fonts:
-        - asset: lib/assets/Poppins/Poppins-Regular.ttf
+        - asset: lib/assets/fonts/pjs/plus-jakarta-sans-v12-latin-regular.ttf
           weight: 400
-        - asset: lib/assets/Poppins/Poppins-Medium.ttf
-          weight: 500
-        - asset: lib/assets/Poppins/Poppins-SemiBold.ttf
-          weight: 600
-        - asset: lib/assets/Poppins/Poppins-Bold.ttf
-          weight: 700
-        - asset: lib/assets/Poppins/Poppins-Italic.ttf
+        - asset: lib/assets/fonts/pjs/plus-jakarta-sans-v12-latin-italic.ttf
           style: italic
-    - family: Bitter
-      fonts:
-        - asset: lib/assets/Bitter/static/Bitter-Light.ttf
-          weight: 300
-        - asset: lib/assets/Bitter/static/Bitter-Regular.ttf
-          weight: 400
-        - asset: lib/assets/Bitter/static/Bitter-Medium.ttf
+        - asset: lib/assets/fonts/pjs/plus-jakarta-sans-v12-latin-500.ttf
           weight: 500
-        - asset: lib/assets/Bitter/static/Bitter-SemiBold.ttf
+        - asset: lib/assets/fonts/pjs/plus-jakarta-sans-v12-latin-600.ttf
           weight: 600
-        - asset: lib/assets/Bitter/static/Bitter-Bold.ttf
+        - asset: lib/assets/fonts/pjs/plus-jakarta-sans-v12-latin-700.ttf
           weight: 700
-        - asset: lib/assets/Bitter/static/Bitter-ExtraBold.ttf
+        - asset: lib/assets/fonts/pjs/plus-jakarta-sans-v12-latin-800.ttf
           weight: 800
-        - asset: lib/assets/Bitter/static/Bitter-Black.ttf
-          weight: 900
-        - asset: lib/assets/Bitter/static/Bitter-Italic.ttf
+    - family: Lora
+      fonts:
+        - asset: lib/assets/fonts/lora/lora-v37-latin-regular.ttf
+          weight: 400
+        - asset: lib/assets/fonts/lora/lora-v37-latin-italic.ttf
           style: italic
-        - asset: lib/assets/Bitter/static/Bitter-BoldItalic.ttf
+        - asset: lib/assets/fonts/lora/lora-v37-latin-500.ttf
+          weight: 500
+        - asset: lib/assets/fonts/lora/lora-v37-latin-600.ttf
+          weight: 600
+        - asset: lib/assets/fonts/lora/lora-v37-latin-700.ttf
           weight: 700
-          style: italic

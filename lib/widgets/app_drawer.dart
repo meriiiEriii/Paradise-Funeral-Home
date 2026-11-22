@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../auth/app_user.dart';
 import '../theme/app_theme.dart';
@@ -115,7 +115,7 @@ class AppDrawer extends StatelessWidget {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      'Paradise Funeral Home · v1.0.0',
+                      'Paradise Funeral Home Â· v1.0.0',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall?.copyWith(
@@ -176,7 +176,7 @@ class AppDrawer extends StatelessWidget {
                     Text(
                       'Paradise Funeral Home',
                       style: TextStyle(
-                        fontFamily: 'Bitter',
+                        fontFamily: 'Lora',
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,

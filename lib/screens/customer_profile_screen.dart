@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/customer_store.dart';
@@ -177,7 +177,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontFamily: 'Bitter',
+                        fontFamily: 'Lora',
                         color: Colors.white,
                         fontSize: 23,
                         fontWeight: FontWeight.w700,
@@ -219,7 +219,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               _heroStat(
                 Icons.account_balance_wallet_outlined,
                 'BALANCE',
-                '₱${customer.remainingBalance.toStringAsFixed(2)}',
+                'â‚±${customer.remainingBalance.toStringAsFixed(2)}',
               ),
             ],
           ),
@@ -380,7 +380,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                           ),
                         ),
                         Text(
-                          '₱${item.amount.toStringAsFixed(2)}',
+                          'â‚±${item.amount.toStringAsFixed(2)}',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -408,12 +408,12 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     const SizedBox(width: 12),
                     Flexible(
                       child: Text(
-                        '₱${customer.totalPackageCost.toStringAsFixed(2)}',
+                        'â‚±${customer.totalPackageCost.toStringAsFixed(2)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
                         style: theme.textTheme.titleSmall?.copyWith(
-                          fontFamily: 'Bitter',
+                          fontFamily: 'Lora',
                           fontWeight: FontWeight.w700,
                           color: scheme.primary,
                           fontSize: 16,
@@ -548,7 +548,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
     final details = pending == null
         ? 'A discount request is awaiting admin approval.'
-        : 'Discount request: ₱${pending.amount.toStringAsFixed(2)} — '
+        : 'Discount request: â‚±${pending.amount.toStringAsFixed(2)} â€” '
             '"${pending.reason}". Awaiting admin approval.';
 
     return Container(
@@ -750,7 +750,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           const SizedBox(width: 12),
           Flexible(
             child: Text(
-              '$prefix₱${amount.toStringAsFixed(2)}',
+              '$prefixâ‚±${amount.toStringAsFixed(2)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.right,

@@ -1,4 +1,4 @@
-import 'package:firebase_core/firebase_core.dart';
+﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,6 +11,7 @@ import 'data/firestore_customer_repository.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_drawer.dart';
+import 'widgets/app_sidebar.dart';
 import 'screens/add_customer_screen.dart';
 import 'screens/approvals_screen.dart';
 import 'screens/auth_screens.dart';
@@ -364,7 +365,7 @@ class SplashScreen extends StatelessWidget {
                 'Paradise Funeral Home',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontFamily: 'Bitter',
+                  fontFamily: 'Lora',
                   color: Colors.white,
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -574,21 +575,41 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final palette = AppPalette.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isDashboard = widget.currentRoute == 'dashboard';
 
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: widget.currentRoute == 'dashboard' ? 'Open menu' : 'Back',
-          icon: Icon(
-            widget.currentRoute == 'dashboard'
-                ? Icons.menu_rounded
-                : Icons.arrow_back_rounded,
-          ),
-          onPressed: widget.currentRoute == 'dashboard'
-              ? () => _scaffoldKey.currentState?.openDrawer()
-              : () => context.go('/dashboard'),
+    // Web-first layout: wide screens get a permanent sidebar; narrow screens
+    // keep the slide-in drawer.
+    final isWide = MediaQuery.of(context).size.width >= 1100;
+
+    final bodyContent = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.04),
+            Colors.transparent,
+          ],
+          stops: const [0, 0.3],
         ),
+      ),
+      child: widget.child,
+    );
+
+    final appBar = AppBar(
+      leading: isDashboard && isWide
+          ? null
+          : IconButton(
+              tooltip: isDashboard ? 'Open menu' : 'Back',
+              icon: Icon(
+                isDashboard
+                    ? Icons.menu_rounded
+                    : Icons.arrow_back_rounded,
+              ),
+              onPressed: isDashboard
+                  ? () => _scaffoldKey.currentState?.openDrawer()
+                  : () => context.go('/dashboard'),
+            ),
         title: Row(
           children: [
             Container(
@@ -669,7 +690,50 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 6),
         ],
-      ),
+      );
+
+    if (isWide) {
+      return Scaffold(
+        body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppSidebar(
+              user: _user,
+              currentRoute: widget.currentRoute,
+              onNavigate: _navigate,
+              onSelectRole: _selectRole,
+              isDark: isDark,
+              onToggleTheme: widget.onToggleTheme,
+            ),
+            VerticalDivider(width: 1, thickness: 1, color: palette.border),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PreferredSize(
+                    preferredSize: appBar.preferredSize,
+                    child: appBar,
+                  ),
+                  Expanded(child: bodyContent),
+                ],
+              ),
+            ),
+          ],
+        ),
+        floatingActionButton: _showFab
+            ? FloatingActionButton.extended(
+                onPressed: () => context.go('/add'),
+                tooltip: 'Add Customer',
+                icon: const Icon(Icons.add_rounded, size: 22),
+                label: const Text('New Customer'),
+              )
+            : null,
+      );
+    }
+
+    return Scaffold(
+      key: _scaffoldKey,
+      appBar: appBar,
       drawer: AppDrawer(
         user: _user,
         currentRoute: widget.currentRoute,
@@ -678,20 +742,7 @@ class _HomeScreenState extends State<HomeScreen> {
         isDark: isDark,
         onToggleTheme: widget.onToggleTheme,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              theme.colorScheme.primary.withValues(alpha: 0.05),
-              Colors.transparent,
-            ],
-            stops: const [0, 0.3],
-          ),
-        ),
-        child: widget.child,
-      ),
+      body: bodyContent,
       floatingActionButton: _showFab
           ? FloatingActionButton.extended(
               onPressed: () => context.go('/add'),

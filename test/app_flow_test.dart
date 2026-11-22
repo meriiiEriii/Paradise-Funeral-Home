@@ -788,8 +788,7 @@ void main() {
 
       expect(find.byTooltip('Add Customer'), findsNothing);
 
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
+      // Wide viewport: the sidebar is permanently visible.
       expect(find.text('All Customers'), findsOneWidget);
       expect(find.text('Payment'), findsOneWidget);
       expect(find.text('Discount Approvals'), findsNothing);
@@ -963,18 +962,7 @@ void main() {
     testWidgets('logout returns the user to the login screen', (tester) async {
       await _pumpApp(tester, _seedStore());
 
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
-      final drawerScroll = find.descendant(
-        of: find.byType(Drawer),
-        matching: find.byType(Scrollable),
-      );
-      await tester.dragUntilVisible(
-        find.text('Logout'),
-        drawerScroll,
-        const Offset(0, -120),
-      );
-      await tester.pumpAndSettle();
+      // Wide viewport: the sidebar with Logout is permanently visible.
       await tester.tap(find.text('Logout'));
       await tester.pumpAndSettle();
 
@@ -991,8 +979,6 @@ void main() {
       final session = FakeAuthSession.admin();
       await _pumpApp(tester, _seedStore(), session: session);
 
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
       expect(find.text('Administrator'), findsOneWidget);
       expect(find.text('Discount Approvals'), findsOneWidget);
 
@@ -1001,8 +987,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(session.isViewingAsStaff, isTrue);
 
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
       expect(find.text('Discount Approvals'), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -1013,13 +997,9 @@ void main() {
       final session = FakeAuthSession.admin();
       await _pumpApp(tester, _seedStore(), session: session);
 
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
       await tester.tap(find.text('Staff').first);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
       await tester.tap(find.text('Administrator'));
       await tester.pumpAndSettle();
 
@@ -1032,8 +1012,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(session.isViewingAsStaff, isFalse);
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
       expect(find.text('Discount Approvals'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -1041,8 +1019,6 @@ void main() {
     testWidgets('staff must sign in to reach the admin view', (tester) async {
       await _pumpApp(tester, _seedStore(), session: FakeAuthSession.staff());
 
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
       await tester.tap(find.text('Administrator'));
       await tester.pumpAndSettle();
 

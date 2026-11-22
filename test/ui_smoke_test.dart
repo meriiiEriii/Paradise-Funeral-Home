@@ -77,18 +77,18 @@ void main() {
   testWidgets('Dashboard renders with seeded data', (tester) async {
     await _pumpApp(tester, const Size(1400, 900));
 
-    expect(find.text('Paradise Funeral Home'), findsOneWidget);
+    expect(find.text('Paradise Funeral Home'), findsWidgets);
     expect(find.text('Active Accounts'), findsOneWidget);
     expect(find.text('Maria Santos'), findsOneWidget);
     expect(find.text('ACTIVE ACCOUNTS'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Drawer navigation and theme toggle work', (tester) async {
+  testWidgets('Sidebar navigation and theme toggle work', (tester) async {
     await _pumpApp(tester, const Size(1400, 900));
 
-    await tester.tap(find.byTooltip('Open menu'));
-    await tester.pumpAndSettle();
+    // Wide viewport: the sidebar is permanently visible, no menu button.
+    expect(find.byTooltip('Open menu'), findsNothing);
     expect(find.text('All Customers'), findsOneWidget);
 
     await tester.tap(find.text('All Customers'));
@@ -112,8 +112,11 @@ void main() {
     await _pumpApp(tester, const Size(1400, 900));
 
     Future<void> openRoute(String label) async {
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
+      final menu = find.byTooltip('Open menu');
+      if (menu.evaluate().isNotEmpty) {
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+      }
       await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text(label).last);
@@ -142,7 +145,7 @@ void main() {
   testWidgets('Dashboard adapts to a narrow viewport', (tester) async {
     await _pumpApp(tester, const Size(420, 900));
 
-    expect(find.text('Paradise Funeral Home'), findsOneWidget);
+    expect(find.text('Paradise Funeral Home'), findsWidgets);
     expect(find.text('Maria Santos'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -151,8 +154,11 @@ void main() {
     await _pumpApp(tester, const Size(420, 900));
 
     Future<void> openRoute(String label) async {
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
+      final menu = find.byTooltip('Open menu');
+      if (menu.evaluate().isNotEmpty) {
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+      }
       await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text(label).last);
@@ -194,7 +200,7 @@ void main() {
   testWidgets('Dashboard renders at 320px without overflow', (tester) async {
     await _pumpApp(tester, const Size(320, 900));
 
-    expect(find.text('Paradise Funeral Home'), findsOneWidget);
+    expect(find.text('Paradise Funeral Home'), findsWidgets);
     expect(find.text('Maria Santos'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -203,8 +209,11 @@ void main() {
     await _pumpApp(tester, const Size(320, 900));
 
     Future<void> openRoute(String label) async {
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
+      final menu = find.byTooltip('Open menu');
+      if (menu.evaluate().isNotEmpty) {
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+      }
       await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text(label).last);

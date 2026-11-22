@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
@@ -45,7 +45,7 @@ class PageHeader extends StatelessWidget {
               Text(
                 title,
                 style: theme.textTheme.titleLarge?.copyWith(
-                  fontFamily: 'Bitter',
+                  fontFamily: 'Lora',
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.3,
                 ),

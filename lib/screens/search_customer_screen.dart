@@ -110,7 +110,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
                     const Text(
                       'All Customers',
                       style: TextStyle(
-                        fontFamily: 'Bitter',
+                        fontFamily: 'Lora',
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,

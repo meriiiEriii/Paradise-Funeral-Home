@@ -3,26 +3,28 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  static const brand50 = Color(0xFFF2F7FE);
-  static const brand100 = Color(0xFFE1EDFB);
-  static const brand200 = Color(0xFFC3DAF7);
-  static const brand300 = Color(0xFF8FBAEF);
-  static const brand400 = Color(0xFF5A97E3);
-  static const brand500 = Color(0xFF2E76CE);
-  static const brand600 = Color(0xFF1A5FAE);
-  static const brand700 = Color(0xFF144C8F);
-  static const brand800 = Color(0xFF0F3B70);
-  static const brand900 = Color(0xFF0A2A52);
+  // Corporate blue ramp — calm, desaturated, print-like.
+  static const brand50 = Color(0xFFF2F6FD);
+  static const brand100 = Color(0xFFE4EDFA);
+  static const brand200 = Color(0xFFC6DAF4);
+  static const brand300 = Color(0xFF97BCED);
+  static const brand400 = Color(0xFF6197DF);
+  static const brand500 = Color(0xFF3B76CE);
+  static const brand600 = Color(0xFF235CB0);
+  static const brand700 = Color(0xFF1C4A90);
+  static const brand800 = Color(0xFF183C74);
+  static const brand900 = Color(0xFF142F5C);
 
-  static const teal = Color(0xFF0E8F8F);
-  static const tealDeep = Color(0xFF075C5C);
-  static const tealSoft = Color(0xFFDFF4F4);
+  // Neutral slate accent (replaces the old teal).
+  static const slate = Color(0xFF3E5C8A);
+  static const slateDeep = Color(0xFF273D5E);
+  static const slateSoft = Color(0xFFE9EFF7);
 
-  static const ink = Color(0xFF11253C);
-  static const canvas = Color(0xFFF2F5FA);
-  static const success = Color(0xFF1E8E5A);
-  static const warning = Color(0xFFB96E00);
-  static const danger = Color(0xFFC0392B);
+  static const ink = Color(0xFF16233A);
+  static const canvas = Color(0xFFF6F8FB);
+  static const success = Color(0xFF177A4B);
+  static const warning = Color(0xFF96660A);
+  static const danger = Color(0xFFB03A2E);
 }
 
 @immutable
@@ -60,37 +62,37 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color heroEnd;
 
   static const light = AppPalette(
-    success: Color(0xFF16794C),
-    successSoft: Color(0xFFE2F4EA),
-    warning: Color(0xFF9A5B00),
-    warningSoft: Color(0xFFFCF0DA),
-    danger: Color(0xFFB03325),
-    dangerSoft: Color(0xFFFBE8E5),
-    accent: Color(0xFF0E8F8F),
-    accentSoft: Color(0xFFDFF4F4),
-    brandSoft: Color(0xFFE8F1FC),
-    surfaceAlt: Color(0xFFEDF3FA),
-    border: Color(0xFFD3DEEB),
-    muted: Color(0xFF5B6B80),
-    heroStart: Color(0xFF0A3568),
-    heroEnd: Color(0xFF1F6FC4),
+    success: Color(0xFF177A4B),
+    successSoft: Color(0xFFE4F3EB),
+    warning: Color(0xFF96660A),
+    warningSoft: Color(0xFFF8F1DF),
+    danger: Color(0xFFB03A2E),
+    dangerSoft: Color(0xFFFBEAE7),
+    accent: Color(0xFF3E5C8A),
+    accentSoft: Color(0xFFE9EFF7),
+    brandSoft: Color(0xFFE4EDFA),
+    surfaceAlt: Color(0xFFF2F5F9),
+    border: Color(0xFFDFE5EE),
+    muted: Color(0xFF5D6B80),
+    heroStart: Color(0xFF17395F),
+    heroEnd: Color(0xFF215789),
   );
 
   static const dark = AppPalette(
-    success: Color(0xFF57C998),
-    successSoft: Color(0xFF143326),
-    warning: Color(0xFFE8B15A),
-    warningSoft: Color(0xFF33270F),
-    danger: Color(0xFFF07A7A),
-    dangerSoft: Color(0xFF3A1A1D),
-    accent: Color(0xFF4FC3C3),
-    accentSoft: Color(0xFF12333A),
-    brandSoft: Color(0xFF122A45),
-    surfaceAlt: Color(0xFF13253A),
-    border: Color(0xFF22374F),
-    muted: Color(0xFF8498AF),
-    heroStart: Color(0xFF0A2A4F),
-    heroEnd: Color(0xFF1B5FA8),
+    success: Color(0xFF6FBF97),
+    successSoft: Color(0xFF142A20),
+    warning: Color(0xFFD9B36A),
+    warningSoft: Color(0xFF2A2110),
+    danger: Color(0xFFE58B84),
+    dangerSoft: Color(0xFF321714),
+    accent: Color(0xFF8CA6C9),
+    accentSoft: Color(0xFF16233A),
+    brandSoft: Color(0xFF16253C),
+    surfaceAlt: Color(0xFF152134),
+    border: Color(0xFF24344D),
+    muted: Color(0xFF8B9BB3),
+    heroStart: Color(0xFF122742),
+    heroEnd: Color(0xFF1B3E66),
   );
 
   static AppPalette of(BuildContext context) =>
@@ -167,10 +169,10 @@ class AppTheme {
           onPrimary: Colors.white,
           primaryContainer: AppColors.brand100,
           onPrimaryContainer: AppColors.brand900,
-          secondary: AppColors.teal,
+          secondary: AppColors.slate,
           onSecondary: Colors.white,
-          secondaryContainer: AppColors.tealSoft,
-          onSecondaryContainer: AppColors.tealDeep,
+          secondaryContainer: AppColors.slateSoft,
+          onSecondaryContainer: AppColors.slateDeep,
           surface: Colors.white,
           onSurface: AppColors.ink,
           surfaceContainerHighest: palette.surfaceAlt,
@@ -189,23 +191,23 @@ class AppTheme {
           seedColor: AppColors.brand400,
           brightness: Brightness.dark,
         ).copyWith(
-          primary: const Color(0xFF7FB2FF),
-          onPrimary: const Color(0xFF082544),
-          primaryContainer: const Color(0xFF163A63),
-          onPrimaryContainer: const Color(0xFFD8E7FF),
-          secondary: const Color(0xFF6FD3D3),
-          onSecondary: const Color(0xFF042B2B),
-          secondaryContainer: const Color(0xFF123F42),
-          onSecondaryContainer: const Color(0xFFC6F0F0),
-          surface: const Color(0xFF0F1D2E),
-          onSurface: const Color(0xFFE9F0FA),
+          primary: const Color(0xFF8FB3E8),
+          onPrimary: const Color(0xFF0D2138),
+          primaryContainer: const Color(0xFF1A3860),
+          onPrimaryContainer: const Color(0xFFD6E4FA),
+          secondary: const Color(0xFF9FB4D4),
+          onSecondary: const Color(0xFF131F30),
+          secondaryContainer: const Color(0xFF1D2F49),
+          onSecondaryContainer: const Color(0xFFDCE5F2),
+          surface: const Color(0xFF101824),
+          onSurface: const Color(0xFFE7EDF6),
           surfaceContainerHighest: palette.surfaceAlt,
           outline: palette.border,
-          outlineVariant: const Color(0xFF1B2F47),
-          error: const Color(0xFFF07A7A),
-          onError: const Color(0xFF3A0B0B),
+          outlineVariant: const Color(0xFF1C2B42),
+          error: const Color(0xFFE58B84),
+          onError: const Color(0xFF360D0A),
         );
-    return _build(scheme, palette, canvas: const Color(0xFF081220));
+    return _build(scheme, palette, canvas: const Color(0xFF0B111C));
   }
 
   static ThemeData _build(
@@ -221,7 +223,7 @@ class AppTheme {
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: canvas,
-      fontFamily: 'Poppins',
+      fontFamily: 'PlusJakartaSans',
     );
 
     final textTheme = _textTheme(base.textTheme, scheme);
@@ -239,7 +241,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        toolbarHeight: 68,
+        toolbarHeight: 64,
         titleTextStyle: textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w700,
           color: scheme.onSurface,
@@ -254,7 +256,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           side: BorderSide(color: palette.border),
         ),
       ),
@@ -265,7 +267,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: palette.surfaceAlt,
+        fillColor: isDark ? palette.surfaceAlt : Colors.white,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -284,8 +286,8 @@ class AppTheme {
         ),
         prefixIconColor: palette.muted,
         suffixIconColor: palette.muted,
-        border: _inputBorder(palette.muted.withValues(alpha: 0.42)),
-        enabledBorder: _inputBorder(palette.muted.withValues(alpha: 0.42)),
+        border: _inputBorder(palette.border),
+        enabledBorder: _inputBorder(palette.border),
         focusedBorder: _inputBorder(scheme.primary, width: 1.6),
         errorBorder: _inputBorder(scheme.error),
         focusedErrorBorder: _inputBorder(scheme.error, width: 1.6),
@@ -299,10 +301,10 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'PlusJakartaSans',
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
@@ -314,10 +316,10 @@ class AppTheme {
           foregroundColor: scheme.onPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'PlusJakartaSans',
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
@@ -329,10 +331,10 @@ class AppTheme {
           side: BorderSide(color: palette.border),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'PlusJakartaSans',
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
@@ -343,10 +345,10 @@ class AppTheme {
           foregroundColor: scheme.primary,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'PlusJakartaSans',
             fontWeight: FontWeight.w600,
             fontSize: 13.5,
           ),
@@ -356,37 +358,37 @@ class AppTheme {
         style: IconButton.styleFrom(
           highlightColor: scheme.primary.withValues(alpha: 0.08),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
-        elevation: 3,
-        highlightElevation: 5,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 2,
+        highlightElevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         extendedTextStyle: const TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'PlusJakartaSans',
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isDark ? const Color(0xFF1C3049) : AppColors.ink,
+        backgroundColor: isDark ? const Color(0xFF1C2B42) : AppColors.ink,
         contentTextStyle: const TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'PlusJakartaSans',
           color: Colors.white,
           fontSize: 13.5,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         insetPadding: const EdgeInsets.all(16),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         titleTextStyle: textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w700,
           color: scheme.onSurface,
@@ -401,7 +403,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         headerBackgroundColor: scheme.primary,
         headerForegroundColor: scheme.onPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       drawerTheme: DrawerThemeData(
         backgroundColor: scheme.surface,
@@ -409,26 +411,26 @@ class AppTheme {
         scrimColor: Colors.black.withValues(alpha: 0.45),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
-            topRight: Radius.circular(24),
-            bottomRight: Radius.circular(24),
+            topRight: Radius.circular(20),
+            bottomRight: Radius.circular(20),
           ),
         ),
       ),
       listTileTheme: ListTileThemeData(
         iconColor: palette.muted,
         textColor: scheme.onSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: palette.surfaceAlt,
         side: BorderSide(color: palette.border),
         labelStyle: TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'PlusJakartaSans',
           color: scheme.onSurface,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: scheme.primary,
@@ -451,11 +453,11 @@ class AppTheme {
       tooltipTheme: TooltipThemeData(
         waitDuration: const Duration(milliseconds: 400),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF21374F) : AppColors.ink,
+          color: isDark ? const Color(0xFF22334C) : AppColors.ink,
           borderRadius: BorderRadius.circular(8),
         ),
         textStyle: const TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'PlusJakartaSans',
           color: Colors.white,
           fontSize: 12,
           fontWeight: FontWeight.w500,
@@ -476,14 +478,14 @@ class AppTheme {
       dataTableTheme: DataTableThemeData(
         headingRowColor: WidgetStatePropertyAll(palette.surfaceAlt),
         headingTextStyle: TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'PlusJakartaSans',
           fontSize: 11,
           letterSpacing: 0.6,
           fontWeight: FontWeight.w700,
           color: palette.muted,
         ),
         dataTextStyle: TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'PlusJakartaSans',
           fontSize: 13,
           color: scheme.onSurface,
         ),
@@ -503,50 +505,67 @@ class AppTheme {
         color: scheme.surface,
         surfaceTintColor: Colors.transparent,
         textStyle: textTheme.bodyMedium,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: scheme.primary,
+        unselectedLabelColor: palette.muted,
+        labelStyle: const TextStyle(
+          fontFamily: 'PlusJakartaSans',
+          fontWeight: FontWeight.w600,
+          fontSize: 13.5,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'PlusJakartaSans',
+          fontWeight: FontWeight.w500,
+          fontSize: 13.5,
+        ),
+        indicatorColor: scheme.primary,
+        dividerColor: palette.border,
       ),
     );
   }
 
   static TextTheme _textTheme(TextTheme base, ColorScheme scheme) {
     final themed = base.apply(
-      fontFamily: 'Poppins',
+      fontFamily: 'PlusJakartaSans',
       bodyColor: scheme.onSurface,
       displayColor: scheme.onSurface,
     );
     return themed.copyWith(
       displaySmall: themed.displaySmall?.copyWith(
-        fontFamily: 'Bitter',
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.6,
-      ),
-      headlineMedium: themed.headlineMedium?.copyWith(
-        fontFamily: 'Bitter',
-        fontWeight: FontWeight.w700,
+        fontFamily: 'Lora',
+        fontWeight: FontWeight.w600,
         letterSpacing: -0.4,
       ),
-      headlineSmall: themed.headlineSmall?.copyWith(
-        fontFamily: 'Bitter',
-        fontWeight: FontWeight.w700,
+      headlineMedium: themed.headlineMedium?.copyWith(
+        fontFamily: 'Lora',
+        fontWeight: FontWeight.w600,
         letterSpacing: -0.3,
       ),
-      titleLarge: themed.titleLarge?.copyWith(
-        fontWeight: FontWeight.w700,
+      headlineSmall: themed.headlineSmall?.copyWith(
+        fontFamily: 'Lora',
+        fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
+      ),
+      titleLarge: themed.titleLarge?.copyWith(
+        fontFamily: 'Lora',
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.1,
       ),
       titleMedium: themed.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       titleSmall: themed.titleSmall?.copyWith(fontWeight: FontWeight.w600),
       labelLarge: themed.labelLarge?.copyWith(fontWeight: FontWeight.w600),
       labelSmall: themed.labelSmall?.copyWith(
         fontWeight: FontWeight.w600,
-        letterSpacing: 0.7,
+        letterSpacing: 0.6,
       ),
     );
   }
 
   static OutlineInputBorder _inputBorder(Color color, {double width = 1}) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide(color: color, width: width),
     );
   }
