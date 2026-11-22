@@ -552,8 +552,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     _scaffoldKey.currentState?.closeDrawer();
-    // Navigating from the menu always hides the sidebar again.
-    if (mounted) setState(() => _sidebarOpen = false);
     context.go(_pathFor(route));
   }
 
@@ -567,6 +565,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _scaffoldKey.currentState?.closeDrawer();
       widget.session.viewAsStaff();
       widget.store.setNotificationRole(AppRole.staff);
+      // Role switching always hides the sidebar.
+      if (mounted) setState(() => _sidebarOpen = false);
       context.go('/dashboard');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -580,6 +580,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final unlocked = await showAdminLoginDialog(context, widget.session);
     if (!mounted || !unlocked) return;
     widget.store.setNotificationRole(widget.session.user?.role);
+    if (mounted) setState(() => _sidebarOpen = false);
     context.go('/dashboard');
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Administrator access granted.')),
@@ -667,25 +668,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     final appBar = AppBar(
-      leadingWidth: isWide && !isDashboard ? 100 : null,
+      leadingWidth: isWide ? (isDashboard ? 72 : 114) : null,
       leading: isWide
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.currentRoute != 'add')
-                  IconButton(
-                    tooltip: 'Open menu',
-                    icon: const Icon(Icons.menu_rounded),
-                    onPressed: () =>
-                        setState(() => _sidebarOpen = !_sidebarOpen),
-                  ),
-                if (!isDashboard)
-                  IconButton(
-                    tooltip: 'Back',
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    onPressed: _handleAppBarBack,
-                  ),
-              ],
+          ? Padding(
+              padding: const EdgeInsets.only(left: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.currentRoute != 'add')
+                    IconButton(
+                      tooltip: 'Open menu',
+                      icon: const Icon(Icons.menu_rounded),
+                      onPressed: () =>
+                          setState(() => _sidebarOpen = !_sidebarOpen),
+                    ),
+                  if (!isDashboard)
+                    IconButton(
+                      tooltip: 'Back',
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: _handleAppBarBack,
+                    ),
+                ],
+              ),
             )
           : IconButton(
               tooltip: isDashboard ? 'Open menu' : 'Back',
@@ -743,7 +747,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           IconButton(
             tooltip: 'Notifications',
-            onPressed: () => context.push('/notifications'),
+            onPressed: () {
+              // Opening notifications always hides the sidebar.
+              setState(() => _sidebarOpen = false);
+              context.push('/notifications');
+            },
             icon: Badge(
               isLabelVisible:
                   widget.store.unreadNotificationCount(widget.user) > 0,

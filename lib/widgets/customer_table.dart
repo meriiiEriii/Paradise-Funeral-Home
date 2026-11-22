@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 
 import '../models/customer.dart';
@@ -111,14 +112,14 @@ class CustomerTable extends StatelessWidget {
         )),
         DataCell(_constrainedText(context, c.package)),
         DataCell(Text(
-          '₱${c.totalPackageCost.toStringAsFixed(2)}',
+          formatPeso(c.totalPackageCost),
           style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         )),
         DataCell(Text(
-          '₱${c.amountPaid.toStringAsFixed(2)}',
+          formatPeso(c.amountPaid),
           style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 12,
             fontWeight: FontWeight.w500,
@@ -126,7 +127,7 @@ class CustomerTable extends StatelessWidget {
           ),
         )),
         DataCell(Text(
-          '₱${c.remainingBalance.toStringAsFixed(2)}',
+          formatPeso(c.remainingBalance),
           style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 12,
             fontWeight: FontWeight.w600,

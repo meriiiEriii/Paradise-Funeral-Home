@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -287,7 +288,7 @@ class _DelayedAccountsScreenState extends State<DelayedAccountsScreen> {
                     children: [
                       _detail(
                         'Balance',
-                        '₱${customer.remainingBalance.toStringAsFixed(2)}',
+                        formatPeso(customer.remainingBalance),
                         color: palette.danger,
                         bold: true,
                         alignEnd: true,

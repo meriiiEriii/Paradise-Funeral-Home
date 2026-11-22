@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -604,7 +605,7 @@ class CustomerStore extends ChangeNotifier {
         type: AppNotificationType.discountRequested,
         title: 'New discount request',
         message:
-            '${customer.name} ($customerId) requested a ₱${amount.toStringAsFixed(2)} discount.',
+            '${customer.name} ($customerId) requested a formatPeso(amount) discount.',
         audienceRole: 'admin',
         customerId: customerId,
         requestId: request.id,
@@ -678,7 +679,7 @@ class CustomerStore extends ChangeNotifier {
         type: AppNotificationType.discountApproved,
         title: 'Discount approved',
         message:
-            'Your ₱${request.amount.toStringAsFixed(2)} discount request for ${customer.name} (${customer.id}) was approved.',
+            'Your ${formatPeso(request.amount)} discount request for ${customer.name} (${customer.id}) was approved.',
         recipientUid: request.requestedByUid,
         customerId: customer.id,
         requestId: request.id,
@@ -729,7 +730,7 @@ class CustomerStore extends ChangeNotifier {
         type: AppNotificationType.discountRejected,
         title: 'Discount request rejected',
         message:
-            'Your ₱${request.amount.toStringAsFixed(2)} discount request for ${customer.name} (${customer.id}) was rejected.',
+            'Your ${formatPeso(request.amount)} discount request for ${customer.name} (${customer.id}) was rejected.',
         recipientUid: request.requestedByUid,
         customerId: customer.id,
         requestId: request.id,

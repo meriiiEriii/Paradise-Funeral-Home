@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -295,13 +296,13 @@ class _CompletedArchiveScreenState extends State<CompletedArchiveScreen> {
                     children: [
                       _detail(
                         'Total due',
-                        '₱${customer.totalDue.toStringAsFixed(2)}',
+                        formatPeso(customer.totalDue),
                         alignEnd: true,
                       ),
                       const SizedBox(height: 6),
                       _detail(
                         'Amount paid',
-                        '₱${customer.amountPaid.toStringAsFixed(2)}',
+                        formatPeso(customer.amountPaid),
                         color: palette.success,
                         bold: true,
                         alignEnd: true,

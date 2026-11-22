@@ -1146,6 +1146,8 @@ void main() {
       await tester.tap(find.text('Staff').first);
       await tester.pumpAndSettle();
 
+      // Role switching hides the sidebar; reopen it to switch back.
+      await _openSidebar(tester);
       await tester.tap(find.text('Administrator'));
       await tester.pumpAndSettle();
 
@@ -1158,6 +1160,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(session.isViewingAsStaff, isFalse);
+      // Role switching hides the sidebar; reopen it.
+      await _openSidebar(tester);
       expect(find.text('Discount Approvals'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

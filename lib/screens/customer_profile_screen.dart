@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -219,7 +220,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               _heroStat(
                 Icons.account_balance_wallet_outlined,
                 'BALANCE',
-                '₱${customer.remainingBalance.toStringAsFixed(2)}',
+                formatPeso(customer.remainingBalance),
               ),
             ],
           ),
@@ -380,7 +381,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                           ),
                         ),
                         Text(
-                          '₱${item.amount.toStringAsFixed(2)}',
+                          formatPeso(item.amount),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -408,7 +409,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     const SizedBox(width: 12),
                     Flexible(
                       child: Text(
-                        '₱${customer.totalPackageCost.toStringAsFixed(2)}',
+                        formatPeso(customer.totalPackageCost),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
@@ -548,7 +549,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
     final details = pending == null
         ? 'A discount request is awaiting admin approval.'
-        : 'Discount request: ₱${pending.amount.toStringAsFixed(2)} — '
+        : 'Discount request: formatPeso(pending.amount) — '
             '"${pending.reason}". Awaiting admin approval.';
 
     return Container(
@@ -750,7 +751,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           const SizedBox(width: 12),
           Flexible(
             child: Text(
-              '$prefix₱${amount.toStringAsFixed(2)}',
+              prefix == '-' ? '-${formatPeso(amount)}' : formatPeso(amount),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.right,

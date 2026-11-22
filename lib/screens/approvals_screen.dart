@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -58,7 +59,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
         icon: const Icon(Icons.verified_outlined, size: 26),
         title: const Text('Approve discount'),
         content: Text(
-          'Apply a ₱${request.amount.toStringAsFixed(2)} discount to '
+          'Apply a formatPeso(request.amount) discount to '
           '${request.customerName} (${request.customerId})?',
         ),
         actions: [
@@ -89,7 +90,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Reject the ₱${request.amount.toStringAsFixed(2)} request for '
+              'Reject the formatPeso(request.amount) request for '
               '${request.customerName}?',
             ),
             const SizedBox(height: 14),
@@ -337,7 +338,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
                     ),
                   ),
                   child: Text(
-                    '₱${request.amount.toStringAsFixed(2)}',
+                    formatPeso(request.amount),
                     style: theme.textTheme.titleSmall?.copyWith(
                       color: palette.warning,
                       fontWeight: FontWeight.w700,
@@ -495,7 +496,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
               ],
             ),
             const SizedBox(height: 12),
-            _historyRow(context, 'Amount', '₱${request.amount.toStringAsFixed(2)}'),
+            _historyRow(context, 'Amount', formatPeso(request.amount)),
             _historyRow(context, 'Reason', request.reason),
             _historyRow(
               context,

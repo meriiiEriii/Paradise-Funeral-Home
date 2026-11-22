@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -505,7 +506,7 @@ class FirestoreCustomerRepository implements CustomerRepository {
             type: AppNotificationType.discountRequested,
             title: 'New discount request',
             message:
-                '$customerName ($customerId) requested a ₱${(amountCentavos / 100).toStringAsFixed(2)} discount.',
+                '$customerName ($customerId) requested a ${formatPeso(amountCentavos / 100)} discount.',
             customerId: customerId,
             requestId: requestRef.id,
             audienceRole: 'admin',
@@ -596,7 +597,7 @@ class FirestoreCustomerRepository implements CustomerRepository {
               type: AppNotificationType.discountApproved,
               title: 'Discount approved',
               message:
-                  'Your ₱${(amountCentavos / 100).toStringAsFixed(2)} discount request for $customerName ($customerId) was approved.',
+                  'Your ${formatPeso(amountCentavos / 100)} discount request for $customerName ($customerId) was approved.',
               customerId: customerId,
               requestId: requestId,
               recipientUid: requesterUid,
@@ -667,7 +668,7 @@ class FirestoreCustomerRepository implements CustomerRepository {
               type: AppNotificationType.discountRejected,
               title: 'Discount request rejected',
               message:
-                  'Your ₱${(amountCentavos / 100).toStringAsFixed(2)} discount request for $customerName ($customerId) was rejected.',
+                  'Your ${formatPeso(amountCentavos / 100)} discount request for $customerName ($customerId) was rejected.',
               customerId: customerId,
               requestId: requestId,
               recipientUid: requesterUid,

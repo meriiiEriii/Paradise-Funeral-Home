@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 
 import '../models/customer.dart';
@@ -90,7 +91,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Amount exceeds remaining balance (₱${remaining.toStringAsFixed(2)})',
+            'Amount exceeds remaining balance (formatPeso(remaining))',
           ),
           backgroundColor: const Color(0xFFC62828),
         ),
@@ -113,7 +114,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Payment of ₱${amount.toStringAsFixed(2)} recorded successfully!',
+            'Payment of formatPeso(amount) recorded successfully!',
           ),
           backgroundColor: const Color(0xFF2E7D32),
         ),
@@ -280,19 +281,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
           const SizedBox(height: 7),
           _financeInfoRow(
             'Package cost',
-            '₱${c.totalPackageCost.toStringAsFixed(2)}',
+            formatPeso(c.totalPackageCost),
           ),
           if (c.approvedDiscount > 0) ...[
             const SizedBox(height: 7),
             _financeInfoRow(
               'Discount',
-              '-₱${c.approvedDiscount.toStringAsFixed(2)}',
+              '-formatPeso(c.approvedDiscount)',
             ),
           ],
           const SizedBox(height: 7),
-          _financeInfoRow('Total due', '₱${c.totalDue.toStringAsFixed(2)}'),
+          _financeInfoRow('Total due', formatPeso(c.totalDue)),
           const SizedBox(height: 7),
-          _financeInfoRow('Amount paid', '₱${c.amountPaid.toStringAsFixed(2)}'),
+          _financeInfoRow('Amount paid', formatPeso(c.amountPaid)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -345,7 +346,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               const SizedBox(width: 12),
               Flexible(
                 child: Text(
-                  '₱${c.remainingBalance.toStringAsFixed(2)}',
+                  formatPeso(c.remainingBalance),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
@@ -393,7 +394,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Remaining balance: ₱${c.remainingBalance.toStringAsFixed(2)}',
+                  'Remaining balance: formatPeso(c.remainingBalance)',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: palette.muted,
                     fontSize: 11.5,

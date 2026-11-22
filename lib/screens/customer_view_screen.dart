@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -414,7 +415,7 @@ class _CustomerViewScreenState extends State<CustomerViewScreen> {
   }
 
   String _peso(int centavos) =>
-      '₱${(centavos / 100).toStringAsFixed(2)}';
+      formatPeso((centavos / 100));
 
   String _statusLabel(String status) {
     switch (status) {

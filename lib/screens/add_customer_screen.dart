@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +10,7 @@ import '../data/customer_store.dart';
 import '../theme/app_theme.dart';
 import '../utils/back_handlers.dart';
 import '../utils/validators.dart' show capitalizeWords, validateContactNumber;
+import '../utils/formatters.dart' show capitalizeSentences, formatPeso;
 import '../widgets/package_editor_dialog.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
@@ -195,7 +197,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     if (choice == 'draft') {
       await _saveDraft();
       if (!mounted) return true;
-      context.go('/drafts');
+      context.go('/dashboard');
       return true;
     }
     // Discarded: clean up the draft being edited, continue default back-nav.
@@ -420,14 +422,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       id: '',
       dateAdded: _dateStarted,
       name: _fullName,
-      address: _addressCtrl.text.trim(),
+      address: _titleCase(_addressCtrl.text),
       contactNumber: _normalizedContact,
       package: _packageNameCtrl.text.trim().isEmpty
           ? 'Custom Package'
           : _titleCase(_packageNameCtrl.text),
       items: packageItems,
       amountPaid: 0.0,
-      remarks: _remarksCtrl.text.trim(),
+      remarks: capitalizeSentences(_remarksCtrl.text),
       dueDate: _dueDate,
     );
 
@@ -589,6 +591,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             _addressCtrl,
             Icons.location_on_outlined,
             maxLines: 2,
+            textCapitalization: TextCapitalization.words,
+            onChanged: (_) => _autoCapitalize(_addressCtrl),
             validator: (v) =>
                 (v?.trim().isEmpty ?? true) ? 'Address is required' : null,
           ),
@@ -622,7 +626,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
         ),
         child: Text(
-          '₱${_totalCost.toStringAsFixed(2)}',
+          formatPeso(_totalCost),
           style: theme.textTheme.labelSmall?.copyWith(
             color: scheme.primary,
             fontWeight: FontWeight.w700,
@@ -896,7 +900,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         ),
                       ),
                       Text(
-                        '₱${_totalCost.toStringAsFixed(2)}',
+                        formatPeso(_totalCost),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontFamily: 'Lora',
                           fontWeight: FontWeight.w700,

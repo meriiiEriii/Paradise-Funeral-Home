@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 
 import '../data/customer_store.dart';
@@ -45,7 +46,7 @@ class _DiscountRequestDialogState extends State<_DiscountRequestDialog> {
 
   Future<void> _submit() async {
     final amount = double.tryParse(_amountCtrl.text.trim());
-    final reason = _reasonCtrl.text.trim();
+    final reason = capitalizeSentences(_reasonCtrl.text);
     if (amount == null || amount <= 0) {
       setState(() => _error = 'Enter a discount amount greater than zero.');
       return;
@@ -53,7 +54,7 @@ class _DiscountRequestDialogState extends State<_DiscountRequestDialog> {
     if (amount > widget.customer.remainingBalance) {
       setState(
         () => _error =
-            'The discount cannot exceed the remaining balance of ₱${widget.customer.remainingBalance.toStringAsFixed(2)}.',
+            'The discount cannot exceed the remaining balance of ${formatPeso(widget.customer.remainingBalance)}.',
       );
       return;
     }
@@ -112,7 +113,7 @@ class _DiscountRequestDialogState extends State<_DiscountRequestDialog> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Remaining balance: ₱${customer.remainingBalance.toStringAsFixed(2)}',
+                'Remaining balance: ${formatPeso(customer.remainingBalance)}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: palette.muted,
                 ),

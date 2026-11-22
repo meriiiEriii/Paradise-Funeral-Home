@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -137,7 +138,7 @@ class _PaidAccountsScreenState extends State<PaidAccountsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '₱${customer.amountPaid.toStringAsFixed(2)} paid',
+                    'formatPeso(customer.amountPaid) paid',
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: palette.success,
@@ -278,17 +279,17 @@ class _PaidAccountDetailScreenState extends State<PaidAccountDetailScreen> {
               _summaryStat(
                 context,
                 'TOTAL PAID',
-                '₱${customer.amountPaid.toStringAsFixed(2)}',
+                formatPeso(customer.amountPaid),
               ),
               _summaryStat(
                 context,
                 'TOTAL DUE',
-                '₱${customer.totalDue.toStringAsFixed(2)}',
+                formatPeso(customer.totalDue),
               ),
               _summaryStat(
                 context,
                 'BALANCE',
-                '₱${customer.remainingBalance.toStringAsFixed(2)}',
+                formatPeso(customer.remainingBalance),
               ),
             ],
           ),
@@ -395,12 +396,12 @@ class _PaidAccountDetailScreenState extends State<PaidAccountDetailScreen> {
             row('Package', customer.package),
             row(
               'Package cost',
-              '₱${customer.totalPackageCost.toStringAsFixed(2)}',
+              formatPeso(customer.totalPackageCost),
             ),
             if (customer.approvedDiscount > 0)
               row(
                 'Discount',
-                '-₱${customer.approvedDiscount.toStringAsFixed(2)}',
+                '-formatPeso(customer.approvedDiscount)',
               ),
             row(
               'Due date',
@@ -481,7 +482,7 @@ class _PaidAccountDetailScreenState extends State<PaidAccountDetailScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '₱${payment.amount.toStringAsFixed(2)}',
+                                    formatPeso(payment.amount),
                                     style: theme.textTheme.bodyMedium
                                         ?.copyWith(
                                           fontWeight: FontWeight.w700,
@@ -517,7 +518,7 @@ class _PaidAccountDetailScreenState extends State<PaidAccountDetailScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '₱${payment.balanceAfter.toStringAsFixed(2)}',
+                                  formatPeso(payment.balanceAfter),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 12,

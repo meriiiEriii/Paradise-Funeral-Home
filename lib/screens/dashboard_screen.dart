@@ -1,3 +1,4 @@
+import '../utils/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -389,7 +390,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           StatCard(
             label: 'Package revenue',
-            value: '₱${store.totalRevenue.toStringAsFixed(0)}',
+            value: '₱${formatNumber(store.totalRevenue.round())}',
             caption: 'Across active accounts',
             icon: Icons.trending_up_rounded,
             accent: palette.accent,
