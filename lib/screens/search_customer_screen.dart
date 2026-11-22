@@ -26,7 +26,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
   void initState() {
     super.initState();
     widget.store.addListener(_onStoreChanged);
-    // Every customer record Ã¢â‚¬â€ active, delayed, and completed Ã¢â‚¬â€ is listed
+    // Every customer record  -  active, delayed, and completed  -  is listed
     // right away, newest first.
     _results = widget.store.searchAllCustomers(_searchCtrl.text);
   }
@@ -169,7 +169,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Every customer record Ã¢â‚¬â€ active, delayed, or completed. Search by name, contact number, or customer ID.',
+                      'Every customer record  -  active, delayed, or completed. Search by name, contact number, or customer ID.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.82),
                         fontSize: 12,

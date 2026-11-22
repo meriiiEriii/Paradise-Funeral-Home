@@ -10,6 +10,7 @@ import 'data/customer_store.dart';
 import 'data/firestore_customer_repository.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
+import 'utils/back_handlers.dart';
 import 'widgets/app_drawer.dart';
 import 'widgets/app_logo.dart';
 import 'widgets/app_sidebar.dart';
@@ -21,6 +22,7 @@ import 'screens/customer_profile_screen.dart';
 import 'screens/customer_view_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/delayed_accounts_screen.dart';
+import 'screens/drafts_screen.dart';
 import 'screens/admin_login_dialog.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/paid_accounts_screen.dart';
@@ -103,6 +105,7 @@ class _CIPMSAppState extends State<CIPMSApp> {
     if (storedTheme != null && storedTheme != _themeMode) {
       setState(() => _themeMode = storedTheme);
     }
+    widget.store.setActorUser(widget.session.accountUser);
     widget.store.setNotificationRole(widget.session.user?.role);
     final uid = widget.session.accountUser?.uid;
     if (uid != _lastAccountUid) {
@@ -213,8 +216,17 @@ class _CIPMSAppState extends State<CIPMSApp> {
                 AddCustomerScreen(
                   store: store,
                   isAdmin: session.user?.isAdmin ?? false,
+                  preferences: widget.preferences,
+                  draftId: state.uri.queryParameters['draft'] ?? '',
                   onBack: () => context.go('/dashboard'),
                 ),
+              ),
+            ),
+            GoRoute(
+              path: '/drafts',
+              pageBuilder: (context, state) => _shellPage(
+                state,
+                DraftsScreen(preferences: widget.preferences),
               ),
             ),
             GoRoute(
@@ -265,6 +277,8 @@ class _CIPMSAppState extends State<CIPMSApp> {
                   state,
                   SettingsScreen(
                     user: user,
+                    store: store,
+                    preferences: widget.preferences,
                     themeMode: _themeMode,
                     onSetThemeMode: _setThemeMode,
                     onSignOut: () => session.signOut(),
@@ -493,6 +507,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Future<void> _handleAppBarBack() async {
+    final handler = routeBackHandlers[widget.currentRoute];
+    if (handler != null && await handler()) return;
+    if (!mounted) return;
+    context.go('/dashboard');
+  }
+
   void _navigate(String route) {
     if (route == 'logout') {
       _scaffoldKey.currentState?.closeDrawer();
@@ -530,15 +551,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    if (route == 'settings') {
-      _scaffoldKey.currentState?.closeDrawer();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings page coming soon')),
-      );
-      return;
-    }
-
     _scaffoldKey.currentState?.closeDrawer();
+    // Navigating from the menu always hides the sidebar again.
+    if (mounted) setState(() => _sidebarOpen = false);
     context.go(_pathFor(route));
   }
 
@@ -575,6 +590,8 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (route) {
       case 'search':
         return '/search';
+      case 'drafts':
+        return '/drafts';
       case 'delayed':
         return '/delayed';
       case 'paid':
@@ -604,6 +621,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return 'Payment';
       case 'delayed':
         return 'Delayed Accounts';
+      case 'drafts':
+        return 'Drafts';
       case 'paid':
         return 'Paid Accounts';
       case 'completed':
@@ -653,17 +672,18 @@ class _HomeScreenState extends State<HomeScreen> {
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  tooltip: 'Open menu',
-                  icon: const Icon(Icons.menu_rounded),
-                  onPressed: () =>
-                      setState(() => _sidebarOpen = !_sidebarOpen),
-                ),
+                if (widget.currentRoute != 'add')
+                  IconButton(
+                    tooltip: 'Open menu',
+                    icon: const Icon(Icons.menu_rounded),
+                    onPressed: () =>
+                        setState(() => _sidebarOpen = !_sidebarOpen),
+                  ),
                 if (!isDashboard)
                   IconButton(
                     tooltip: 'Back',
                     icon: const Icon(Icons.arrow_back_rounded),
-                    onPressed: () => context.go('/dashboard'),
+                    onPressed: _handleAppBarBack,
                   ),
               ],
             )
@@ -745,11 +765,13 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
     if (isWide) {
+      // The New Customer page never shows the sidebar.
+      final sidebarVisible = _sidebarOpen && widget.currentRoute != 'add';
       return Scaffold(
         body: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_sidebarOpen) ...[
+            if (sidebarVisible) ...[
               AppSidebar(
                 user: _user,
                 currentRoute: widget.currentRoute,

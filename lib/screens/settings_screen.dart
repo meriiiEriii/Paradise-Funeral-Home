@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../auth/app_user.dart';
+import '../data/app_preferences.dart';
+import '../data/customer_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/page_header.dart';
 
-/// Working settings page: account details, appearance, about, sign out.
+/// Working settings page: account details, appearance, notifications,
+/// system data, about, and sign out.
 class SettingsScreen extends StatefulWidget {
   final AppUser user;
+  final CustomerStore store;
+  final AppPreferences? preferences;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onSetThemeMode;
   final VoidCallback onSignOut;
@@ -15,6 +20,8 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
     required this.user,
+    required this.store,
+    this.preferences,
     required this.themeMode,
     required this.onSetThemeMode,
     required this.onSignOut,
@@ -25,6 +32,17 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  late bool _emailNotifications;
+  late bool _inAppNotifications;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailNotifications = widget.preferences?.loadEmailNotifications() ?? true;
+    _inAppNotifications =
+        widget.preferences?.loadInAppNotifications() ?? true;
+  }
+
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -155,6 +173,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               _sectionCard(
                 context,
+                icon: Icons.notifications_outlined,
+                title: 'Notifications',
+                child: Column(
+                  children: [
+                    _toggleRow(
+                      context,
+                      'In-app notifications',
+                      'Discount requests, staff registrations, and paid '
+                      'accounts.',
+                      value: _inAppNotifications,
+                      onChanged: (value) {
+                        setState(() => _inAppNotifications = value);
+                        widget.preferences?.saveInAppNotifications(value);
+                      },
+                    ),
+                    const Divider(height: 20),
+                    _toggleRow(
+                      context,
+                      'Email notifications',
+                      'Also send notifications to your email address.',
+                      value: _emailNotifications,
+                      onChanged: (value) {
+                        setState(() => _emailNotifications = value);
+                        widget.preferences?.saveEmailNotifications(value);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _sectionCard(
+                context,
+                icon: Icons.donut_small_rounded,
+                title: 'System data',
+                child: Row(
+                  children: [
+                    _dataStat(context, 'Active',
+                        widget.store.activeCustomers.length),
+                    _dataStat(context, 'Delayed',
+                        widget.store.delayedCustomers.length),
+                    _dataStat(
+                        context, 'Paid', widget.store.paidCustomerCount),
+                    _dataStat(context, 'Archived',
+                        widget.store.completedCustomers.length),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _sectionCard(
+                context,
                 icon: Icons.info_outline_rounded,
                 title: 'About',
                 child: Column(
@@ -273,6 +341,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _toggleRow(
+    BuildContext context,
+    String label,
+    String description, {
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: palette.muted,
+                  fontSize: 11.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Switch.adaptive(value: value, onChanged: onChanged),
+      ],
+    );
+  }
+
+  Widget _dataStat(BuildContext context, String label, int count) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            '$count',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontFamily: 'Lora',
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label.toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: palette.muted,
+              fontSize: 9.5,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
       ),
     );
   }

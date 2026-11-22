@@ -61,6 +61,12 @@ class AppSidebar extends StatelessWidget {
                         'All Customers',
                         'search',
                       ),
+                      _navItem(
+                        context,
+                        Icons.inventory_outlined,
+                        'Drafts',
+                        'drafts',
+                      ),
                       const SizedBox(height: 12),
                       _sectionLabel(context, 'Monitoring'),
                       if (user.isAdmin)

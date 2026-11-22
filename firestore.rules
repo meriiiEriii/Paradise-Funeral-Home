@@ -328,6 +328,7 @@ service cloud.firestore {
           'discountRejected',
           'paymentCompleted',
           'staffRegistered',
+          'customerAdded',
         ]
         && request.resource.data.title is string
         && request.resource.data.message is string
@@ -361,6 +362,10 @@ service cloud.firestore {
             && request.resource.data.createdBy.uid == request.auth.uid
             && getAfter(userPath(request.resource.data.staffUid)).data.role == 'staff'
             && getAfter(userPath(request.resource.data.staffUid)).data.approvalStatus == 'pending'
+          ) || (
+            request.resource.data.type == 'customerAdded'
+            && request.resource.data.audienceRole in ['staff', 'admin']
+            && exists(customerPath(request.resource.data.customerId))
           )
         );
 
@@ -382,7 +387,13 @@ service cloud.firestore {
           )
         );
 
-      allow delete: if false;
+      // Users may delete notifications they can see.
+      allow delete: if isSignedIn()
+        && (
+          resource.data.recipientUid == request.auth.uid
+          || (resource.data.audienceRole == 'admin' && isAdmin())
+          || (resource.data.audienceRole == 'staff' && isStaff())
+        );
     }
 
     // Public, view-only receipt pages reached through customer QR codes.

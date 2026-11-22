@@ -389,7 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           StatCard(
             label: 'Package revenue',
-            value: 'Ã¢â€šÂ±${store.totalRevenue.toStringAsFixed(0)}',
+            value: '₱${store.totalRevenue.toStringAsFixed(0)}',
             caption: 'Across active accounts',
             icon: Icons.trending_up_rounded,
             accent: palette.accent,

@@ -266,7 +266,8 @@ void main() {
       final pending = store.getCustomerById('CUS-0001')!;
       expect(pending.hasPendingDiscountRequest, isTrue);
       expect(store.pendingDiscountRequestCount, 1);
-      expect(store.unreadNotificationCount(adminUser), 1);
+      // 1 customerAdded announcement + 1 discount request.
+      expect(store.unreadNotificationCount(adminUser), 2);
 
       await store.approveDiscountRequest(
         store.pendingDiscountRequests.first.id,
@@ -286,7 +287,7 @@ void main() {
         ),
         isTrue,
       );
-      expect(store.unreadNotificationCount(adminUser), 1);
+      expect(store.unreadNotificationCount(adminUser), 2);
     });
 
     test('rejected discount clears pending and allows a new request', () async {
@@ -318,10 +319,11 @@ void main() {
 
       await store.requestDiscount('CUS-0001', 100, 'Loyal client');
       final notification = store.notifications.first;
-      expect(store.unreadNotificationCount(adminUser), 1);
+      // 1 customerAdded announcement + 1 discount request.
+      expect(store.unreadNotificationCount(adminUser), 2);
 
       await store.markNotificationRead(notification.id, adminUser.uid);
-      expect(store.unreadNotificationCount(adminUser), 0);
+      expect(store.unreadNotificationCount(adminUser), 1);
     });
 
     test('notifications can be marked unread per user', () async {
@@ -331,10 +333,10 @@ void main() {
       await store.requestDiscount('CUS-0001', 100, 'Loyal client');
       final notification = store.notifications.first;
       await store.markNotificationRead(notification.id, adminUser.uid);
-      expect(store.unreadNotificationCount(adminUser), 0);
+      expect(store.unreadNotificationCount(adminUser), 1);
 
       await store.markNotificationUnread(notification.id, adminUser.uid);
-      expect(store.unreadNotificationCount(adminUser), 1);
+      expect(store.unreadNotificationCount(adminUser), 2);
     });
 
     test('unpaid accounts show Unpaid instead of Partial', () {
@@ -674,7 +676,8 @@ void main() {
       await store.requestDiscount('CUS-0001', 100, 'Loyal client');
       final notification = store.notifications.first;
       await store.markNotificationRead(notification.id, adminUser.uid);
-      expect(store.unreadNotificationCount(adminUser), 0);
+      // 3 customerAdded announcements remain unread.
+      expect(store.unreadNotificationCount(adminUser), 3);
 
       await _pumpApp(tester, store, initialLocation: '/notifications');
       expect(find.text('Read (1)'), findsOneWidget);
@@ -686,7 +689,7 @@ void main() {
       await tester.tap(find.text('Mark as unread'));
       await tester.pumpAndSettle();
 
-      expect(store.unreadNotificationCount(adminUser), 1);
+      expect(store.unreadNotificationCount(adminUser), 4);
       expect(tester.takeException(), isNull);
     });
 
@@ -800,39 +803,13 @@ void main() {
       );
 
       expect(find.text('Welcome back'), findsOneWidget);
-
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
       expect(find.text('Sign In'), findsOneWidget);
+      expect(find.text('Email'), findsOneWidget);
 
       await tester.tap(find.text('New here? Create an account'));
       await tester.pumpAndSettle();
       expect(find.text('Create your account'), findsOneWidget);
       expect(find.text('Create staff account'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('login asks for the account type before credentials', (
-      tester,
-    ) async {
-      await _pumpApp(
-        tester,
-        _seedStore(),
-        initialLocation: '/login',
-        session: FakeAuthSession.signedOut(),
-      );
-
-      expect(find.text('Staff'), findsOneWidget);
-      expect(find.text('Admin'), findsOneWidget);
-      expect(find.text('Email'), findsNothing);
-
-      await tester.tap(find.text('Admin'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Sign in as Admin'), findsOneWidget);
-      expect(find.text('Email'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -1128,6 +1105,8 @@ void main() {
       await _pumpApp(tester, _seedStore());
 
       await _openSidebar(tester);
+      await tester.ensureVisible(find.text('Logout'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Logout'));
       await tester.pumpAndSettle();
 

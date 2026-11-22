@@ -124,6 +124,31 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     context.go('/approvals');
   }
 
+  /// Fully paid accounts go straight to the Paid tab for review.
+  void _openPaid(AppNotification notification) {
+    _markReadQuietly(notification);
+    context.go('/paid');
+  }
+
+  /// New-customer announcements open the customer's profile.
+  void _openCustomer(AppNotification notification) {
+    _markReadQuietly(notification);
+    if (widget.store.getCustomerById(notification.customerId) != null) {
+      _pushUnique('/customer/${notification.customerId}');
+    }
+  }
+
+  Future<void> _delete(AppNotification notification) async {
+    try {
+      await widget.store.deleteNotification(notification.id);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not delete the notification: $error')),
+      );
+    }
+  }
+
   /// Expands or collapses a plain notification. Read state is left untouched
   /// so the tile does not jump between the Unread/Read tabs.
   void _toggle(AppNotification notification) {
@@ -234,8 +259,15 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         notification.type == AppNotificationType.staffRegistered;
     final isDiscountRequest =
         notification.type == AppNotificationType.discountRequested;
-    final expanded =
-        !isStaffRequest && !isDiscountRequest && _expandedId == notification.id;
+    final isPaymentCompleted =
+        notification.type == AppNotificationType.paymentCompleted;
+    final isCustomerAdded =
+        notification.type == AppNotificationType.customerAdded;
+    final isDirectNav = isStaffRequest ||
+        isDiscountRequest ||
+        isPaymentCompleted ||
+        isCustomerAdded;
+    final expanded = !isDirectNav && _expandedId == notification.id;
 
     return Card(
       child: InkWell(
@@ -244,6 +276,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             ? () => _openStaffRequest(notification)
             : isDiscountRequest
             ? () => _openApprovals(notification)
+            : isPaymentCompleted
+            ? () => _openPaid(notification)
+            : isCustomerAdded
+            ? () => _openCustomer(notification)
             : () => _toggle(notification),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -325,6 +361,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     onSelected: (value) {
                       if (value == 'toggle') {
                         _setRead(notification, unread);
+                      } else if (value == 'delete') {
+                        _delete(notification);
                       }
                     },
                     itemBuilder: (context) => [
@@ -342,6 +380,16 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                             Text(
                               unread ? 'Mark as read' : 'Mark as unread',
                             ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, size: 17),
+                            SizedBox(width: 10),
+                            Text('Delete'),
                           ],
                         ),
                       ),
@@ -395,7 +443,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       case AppNotificationType.paymentCompleted:
         return _NotificationIcon(Icons.task_alt_rounded, palette.success);
       case AppNotificationType.staffRegistered:
-        return _NotificationIcon(Icons.person_add_alt_1_rounded, palette.warning);
+        return _NotificationIcon(
+          Icons.person_add_alt_1_rounded,
+          palette.warning,
+        );
+      case AppNotificationType.customerAdded:
+        return _NotificationIcon(Icons.group_add_rounded, palette.accent);
     }
   }
 

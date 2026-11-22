@@ -73,7 +73,7 @@ class FirestoreCustomerRepository implements CustomerRepository {
   @override
   Future<Customer> createCustomer(Customer customer) async {
     final user = _requireUser();
-    return _run(() {
+    final created = await _run(() {
       return _firestore.runTransaction((transaction) async {
         final counterRef = _firestore.collection('counters').doc('customers');
         final counterSnapshot = await transaction.get(counterRef);
@@ -113,6 +113,30 @@ class FirestoreCustomerRepository implements CustomerRepository {
         );
         return created;
       });
+    });
+    await _announceNewCustomer(created, actor: user);
+    return created;
+  }
+
+  /// Notifies the other role about a newly registered customer.
+  Future<void> _announceNewCustomer(
+    Customer created, {
+    required User actor,
+  }) async {
+    final role = await _roleFor(actor.uid);
+    await _run(() {
+      return _notifications.doc().set(
+            _notificationData(
+              user: actor,
+              type: AppNotificationType.customerAdded,
+              title: 'New customer added',
+              message:
+                  '${created.name} (${created.id}) was registered by '
+                  '${actor.email ?? 'a user'}.',
+              customerId: created.id,
+              audienceRole: role == 'admin' ? 'staff' : 'admin',
+            ),
+          );
     });
   }
 
@@ -707,6 +731,14 @@ class FirestoreCustomerRepository implements CustomerRepository {
       await _notifications.doc(notificationId).update({
         'readBy': FieldValue.arrayRemove([user.uid]),
       });
+    });
+  }
+
+  @override
+  Future<void> deleteNotification(String notificationId) async {
+    _requireUser();
+    await _run(() async {
+      await _notifications.doc(notificationId).delete();
     });
   }
 

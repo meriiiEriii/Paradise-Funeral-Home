@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../models/customer.dart';
+import '../models/customer_draft.dart';
 import '../models/package_template.dart';
+import '../data/app_preferences.dart';
 import '../data/customer_store.dart';
 import '../theme/app_theme.dart';
+import '../utils/back_handlers.dart';
 import '../utils/validators.dart' show capitalizeWords, validateContactNumber;
 import '../widgets/package_editor_dialog.dart';
 import '../widgets/page_header.dart';
@@ -26,12 +30,16 @@ class _ItemEntry {
 class AddCustomerScreen extends StatefulWidget {
   final CustomerStore store;
   final bool isAdmin;
+  final AppPreferences? preferences;
+  final String draftId;
   final VoidCallback? onBack;
 
   const AddCustomerScreen({
     super.key,
     required this.store,
     this.isAdmin = true,
+    this.preferences,
+    this.draftId = '',
     this.onBack,
   });
 
@@ -54,6 +62,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   DateTime _dueDate = DateTime.now().add(const Duration(days: 10));
   bool _isSubmitting = false;
   String _selectedTemplateId = '';
+  String _draftId = '';
 
   /// "Juan", "Reyes", "Dela", "Jr." -> "Juan Reyes Dela Jr."
   String get _fullName {
@@ -100,6 +109,129 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     super.initState();
     widget.store.addListener(_onStoreChanged);
     _items.add(_ItemEntry());
+    _loadDraft();
+    routeBackHandlers['add'] = _handleBack;
+  }
+
+  void _loadDraft() {
+    if (widget.draftId.isEmpty || widget.preferences == null) return;
+    final draft = widget.preferences
+        ?.loadDrafts()
+        .where((d) => d.id == widget.draftId)
+        .first;
+    if (draft == null) return;
+    _draftId = draft.id;
+    _firstNameCtrl.text = draft.firstName;
+    _middleNameCtrl.text = draft.middleName;
+    _lastNameCtrl.text = draft.lastName;
+    _suffixCtrl.text = draft.suffix;
+    _addressCtrl.text = draft.address;
+    _contactCtrl.text = draft.contactNumber;
+    _remarksCtrl.text = draft.remarks;
+    _packageNameCtrl.text = draft.packageName;
+    _dueDate = draft.dueDate;
+    for (final item in _items) {
+      item.dispose();
+    }
+    _items
+      ..clear()
+      ..addAll(
+        draft.items
+            .map(
+              (item) => _ItemEntry(
+                name: item.name,
+                amount: item.amount.toStringAsFixed(2),
+              ),
+            ),
+      );
+    if (_items.isEmpty) _items.add(_ItemEntry());
+  }
+
+  bool get _hasInput =>
+      _firstNameCtrl.text.trim().isNotEmpty ||
+      _middleNameCtrl.text.trim().isNotEmpty ||
+      _lastNameCtrl.text.trim().isNotEmpty ||
+      _suffixCtrl.text.trim().isNotEmpty ||
+      _addressCtrl.text.trim().isNotEmpty ||
+      _contactCtrl.text.trim().isNotEmpty ||
+      _remarksCtrl.text.trim().isNotEmpty ||
+      _packageNameCtrl.text.trim().isNotEmpty ||
+      _items.any(
+        (item) =>
+            item.nameCtrl.text.trim().isNotEmpty ||
+            item.amountCtrl.text.trim().isNotEmpty,
+      );
+
+  /// Intercepted back press: offer to save the unfinished form as a draft.
+  Future<bool> _handleBack() async {
+    if (!_hasInput) return false;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(
+          Icons.inventory_2_outlined,
+          color: Theme.of(context).colorScheme.primary,
+          size: 26,
+        ),
+        title: const Text('Save this draft?'),
+        content: const Text(
+          'Do you want to cancel this customer? You can save the '
+          'unfinished information to Drafts and finalize it later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('discard'),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).pop('draft'),
+            icon: const Icon(Icons.inventory_outlined, size: 17),
+            label: const Text('Save to Drafts'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return true;
+    if (choice == 'draft') {
+      await _saveDraft();
+      if (!mounted) return true;
+      context.go('/drafts');
+      return true;
+    }
+    // Discarded: clean up the draft being edited, continue default back-nav.
+    if (_draftId.isNotEmpty) {
+      await widget.preferences?.deleteDraft(_draftId);
+    }
+    return false;
+  }
+
+  Future<void> _saveDraft() async {
+    final preferences = widget.preferences;
+    if (preferences == null) return;
+    final draft = CustomerDraft(
+      id: _draftId.isEmpty
+          ? 'D${DateTime.now().millisecondsSinceEpoch}'
+          : _draftId,
+      firstName: _firstNameCtrl.text,
+      middleName: _middleNameCtrl.text,
+      lastName: _lastNameCtrl.text,
+      suffix: _suffixCtrl.text,
+      address: _addressCtrl.text,
+      contactNumber: _contactCtrl.text,
+      remarks: _remarksCtrl.text,
+      packageName: _packageNameCtrl.text,
+      items: _items
+          .map(
+            (item) => PackageItem(
+              name: item.nameCtrl.text,
+              amount: double.tryParse(item.amountCtrl.text) ?? 0,
+            ),
+          )
+          .toList(),
+      dueDate: _dueDate,
+      savedAt: DateTime.now(),
+    );
+    await preferences.upsertDraft(draft);
   }
 
   void _onStoreChanged() {
@@ -108,6 +240,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
   @override
   void dispose() {
+    routeBackHandlers.remove('add');
     widget.store.removeListener(_onStoreChanged);
     _firstNameCtrl.dispose();
     _middleNameCtrl.dispose();
@@ -302,6 +435,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       final created = await widget.store.addCustomer(customer);
       if (!mounted) return;
       setState(() => _isSubmitting = false);
+      if (_draftId.isNotEmpty) {
+        await widget.preferences?.deleteDraft(_draftId);
+      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Customer ${created.name} added successfully!'),

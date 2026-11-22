@@ -99,6 +99,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('All Customers'), findsWidgets);
 
+    // Navigating from the menu hides the sidebar again; reopen it.
+    expect(find.text('Dashboard'), findsNothing);
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Dashboard'));
     await tester.pumpAndSettle();
     expect(find.text('Active Accounts'), findsOneWidget);

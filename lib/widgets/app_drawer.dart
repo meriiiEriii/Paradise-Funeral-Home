@@ -54,6 +54,12 @@ class AppDrawer extends StatelessWidget {
                     'All Customers',
                     'search',
                   ),
+                  _drawerItem(
+                    context,
+                    Icons.inventory_outlined,
+                    'Drafts',
+                    'drafts',
+                  ),
                   const SizedBox(height: 10),
                   _sectionLabel(context, 'Monitoring'),
                   if (user.isAdmin)

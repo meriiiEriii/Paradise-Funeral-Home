@@ -79,46 +79,26 @@ class CustomerTable extends StatelessWidget {
           ),
         )),
         DataCell(
-          Row(
+          Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 13,
-                backgroundColor: scheme.primary.withValues(alpha: 0.10),
-                child: Text(
-                  _initials(c.name),
-                  style: TextStyle(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10.5,
-                  ),
+              Text(
+                c.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
                 ),
               ),
-              const SizedBox(width: 9),
-              Flexible(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      c.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                    Text(
-                      c.id,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: palette.muted,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
+              Text(
+                c.id,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: palette.muted,
+                  fontSize: 10,
                 ),
               ),
             ],
@@ -153,7 +133,7 @@ class CustomerTable extends StatelessWidget {
             color: c.remainingBalance > 0 ? palette.danger : palette.success,
           ),
         )),
-        DataCell(AccountStatusBadge(status: c.accountStatus)),
+        DataCell(StatusBadge(status: c.paymentStatus)),
         DataCell(_constrainedText(context, c.remarks, fallback: '—')),
         DataCell(Text(
           _formatDate(c.dueDate),
@@ -213,14 +193,6 @@ class CustomerTable extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
-        .toUpperCase();
   }
 
   String _formatDate(DateTime date) {

@@ -363,6 +363,7 @@ class CustomerStore extends ChangeNotifier {
         applyBusinessRules();
         notifyListeners();
       }
+      await _announceNewCustomer(created);
       return created;
     }
 
@@ -371,9 +372,38 @@ class CustomerStore extends ChangeNotifier {
         : customer;
     _customers.add(created);
     applyBusinessRules();
+    _announceNewCustomer(created);
     notifyListeners();
     return created;
   }
+
+  /// Notifies the other role about a newly registered customer (admins hear
+  /// about staff creations and vice versa; the creator is not notified).
+  Future<void> _announceNewCustomer(Customer created) async {
+    final actor = _actorUser;
+    final audience = actor != null && actor.isAdmin ? 'staff' : 'admin';
+    _notifications.insert(
+      0,
+      AppNotification(
+        id: _nextNotificationId(),
+        type: AppNotificationType.customerAdded,
+        title: 'New customer added',
+        message:
+            '${created.name} (${created.id}) was registered by '
+            '${actor?.email ?? 'a user'}.',
+        audienceRole: audience,
+        customerId: created.id,
+        createdAt: DateTime.now(),
+        createdByUid: actor?.uid ?? 'local-user',
+      ),
+    );
+  }
+
+  AppUser? get _actorUser => _actorUserOverride;
+
+  /// Set at login so local-mode stores know who is acting.
+  void setActorUser(AppUser? user) => _actorUserOverride = user;
+  AppUser? _actorUserOverride;
 
   Future<void> updateCustomer(Customer updated) async {
     if (_repository != null) {
@@ -744,6 +774,15 @@ class CustomerStore extends ChangeNotifier {
     _notifications[index] = notification.copyWith(
       readBy: notification.readBy.where((id) => id != uid).toList(),
     );
+    notifyListeners();
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    if (_repository != null) {
+      await _repository.deleteNotification(notificationId);
+      return;
+    }
+    _notifications.removeWhere((n) => n.id == notificationId);
     notifyListeners();
   }
 

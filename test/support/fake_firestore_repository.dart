@@ -206,6 +206,12 @@ class FakeFirestoreRepository implements CustomerRepository {
   }
 
   @override
+  Future<void> deleteNotification(String notificationId) async {
+    notifications.removeWhere((n) => n.id == notificationId);
+    Future.microtask(_emitNotifications);
+  }
+
+  @override
   Stream<List<StaffRequest>> watchStaffRequests() async* {
     yield List.of(staffRequests);
     yield* _staffRequestsController.stream.map((list) => List.of(list));

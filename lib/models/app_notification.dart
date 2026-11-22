@@ -6,6 +6,7 @@ enum AppNotificationType {
   discountRejected,
   paymentCompleted,
   staffRegistered,
+  customerAdded,
 }
 
 extension AppNotificationTypeX on AppNotificationType {
@@ -51,6 +52,11 @@ class AppNotification {
   bool get isRead => readBy.isNotEmpty;
 
   bool isVisibleTo(AppUser user) {
+    // New-customer announcements skip the person who created the record.
+    if (type == AppNotificationType.customerAdded &&
+        createdByUid == user.uid) {
+      return false;
+    }
     if (recipientUid != null && recipientUid == user.uid) return true;
     if (audienceRole == 'admin') return user.isAdmin;
     if (audienceRole == 'staff') return !user.isAdmin;
