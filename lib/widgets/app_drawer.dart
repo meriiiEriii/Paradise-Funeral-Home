@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/app_user.dart';
 import '../theme/app_theme.dart';
+import 'app_logo.dart';
 
 class AppDrawer extends StatelessWidget {
   final AppUser user;
@@ -52,12 +53,6 @@ class AppDrawer extends StatelessWidget {
                     Icons.manage_search_rounded,
                     'All Customers',
                     'search',
-                  ),
-                  _drawerItem(
-                    context,
-                    Icons.account_balance_wallet_outlined,
-                    'Payment',
-                    'payment',
                   ),
                   const SizedBox(height: 10),
                   _sectionLabel(context, 'Monitoring'),
@@ -158,22 +153,7 @@ class AppDrawer extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.local_florist_rounded,
-                  color: Colors.white,
-                  size: 25,
-                ),
-              ),
+              const AppLogo(size: 46),
               const SizedBox(width: 12),
               const Expanded(
                 child: Column(

@@ -4,7 +4,7 @@ import '../models/customer.dart';
 import '../models/package_template.dart';
 import '../data/customer_store.dart';
 import '../theme/app_theme.dart';
-import '../utils/validators.dart';
+import '../utils/validators.dart' show capitalizeWords, validateContactNumber;
 import '../widgets/package_editor_dialog.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
@@ -77,6 +77,22 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       part(_lastNameCtrl.text),
       suffix.isEmpty ? '' : suffix.toUpperCase(),
     ].where((value) => value.isNotEmpty).join(' ');
+  }
+
+  /// Real-time capitalization: `textCapitalization` is ignored by desktop
+  /// keyboards, so the first letter of every word is uppercased in code as
+  /// the user types.
+  void _autoCapitalize(
+    TextEditingController controller, {
+    bool allCaps = false,
+  }) {
+    final raw = controller.text;
+    final formatted = allCaps ? raw.toUpperCase() : capitalizeWords(raw);
+    if (formatted == raw) return;
+    controller.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 
   @override
@@ -386,6 +402,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   _firstNameCtrl,
                   Icons.person_outline_rounded,
                   textCapitalization: TextCapitalization.words,
+                  onChanged: (_) => _autoCapitalize(_firstNameCtrl),
                   validator: (v) =>
                       (v?.trim().isEmpty ?? true) ? 'Required' : null,
                 ),
@@ -397,6 +414,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   _lastNameCtrl,
                   Icons.person_outline_rounded,
                   textCapitalization: TextCapitalization.words,
+                  onChanged: (_) => _autoCapitalize(_lastNameCtrl),
                   validator: (v) =>
                       (v?.trim().isEmpty ?? true) ? 'Required' : null,
                 ),
@@ -412,6 +430,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   _middleNameCtrl,
                   Icons.person_outline_rounded,
                   textCapitalization: TextCapitalization.words,
+                  onChanged: (_) => _autoCapitalize(_middleNameCtrl),
                 ),
               ),
               const SizedBox(width: 10),
@@ -422,6 +441,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   Icons.person_outline_rounded,
                   hint: 'Jr., Sr., II',
                   textCapitalization: TextCapitalization.characters,
+                  onChanged: (_) => _autoCapitalize(_suffixCtrl, allCaps: true),
                 ),
               ),
             ],
@@ -595,6 +615,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final nameField = TextFormField(
       controller: item.nameCtrl,
       textCapitalization: TextCapitalization.words,
+      onChanged: (_) => _autoCapitalize(item.nameCtrl),
       decoration: const InputDecoration(
         labelText: 'Item name',
         hintText: 'e.g. Installation',
@@ -832,6 +853,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     TextInputType? keyboardType,
     String? hint,
     TextCapitalization textCapitalization = TextCapitalization.none,
+    ValueChanged<String>? onChanged,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
@@ -839,6 +861,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       maxLines: maxLines,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
+      onChanged: onChanged,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,

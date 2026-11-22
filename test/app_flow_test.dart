@@ -873,7 +873,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('staff sees payment access and new customer but not admin navigation', (
+    testWidgets('staff sees new customer but not admin navigation', (
       tester,
     ) async {
       await _pumpApp(tester, _seedStore(), session: FakeAuthSession.staff());
@@ -883,7 +883,7 @@ void main() {
       // Wide viewport: the sidebar opens with the burger button.
       await _openSidebar(tester);
       expect(find.text('All Customers'), findsOneWidget);
-      expect(find.text('Payment'), findsOneWidget);
+      expect(find.text('Payment'), findsNothing);
       expect(find.text('Discount Approvals'), findsNothing);
       expect(find.text('Staff'), findsWidgets);
       expect(tester.takeException(), isNull);

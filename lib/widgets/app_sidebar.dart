@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../auth/app_user.dart';
 import '../theme/app_theme.dart';
+import 'app_logo.dart';
 
 /// Permanent navigation sidebar shown on wide (desktop/web) layouts.
-/// Mirrors the mobile drawer's structure in a full-height, professional
-/// admin-console layout.
+/// Mirrors the mobile drawer's structure in a full-height, deep-navy
+/// admin-console panel.
 class AppSidebar extends StatelessWidget {
   final AppUser user;
   final String currentRoute;
@@ -26,12 +27,10 @@ class AppSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final palette = AppPalette.of(context);
-    final scheme = theme.colorScheme;
 
     return Material(
-      color: scheme.surface,
+      color: palette.navSurface,
       child: SizedBox(
         width: 264,
         child: SafeArea(
@@ -61,12 +60,6 @@ class AppSidebar extends StatelessWidget {
                         Icons.manage_search_rounded,
                         'All Customers',
                         'search',
-                      ),
-                      _navItem(
-                        context,
-                        Icons.account_balance_wallet_outlined,
-                        'Payment',
-                        'payment',
                       ),
                       const SizedBox(height: 12),
                       _sectionLabel(context, 'Monitoring'),
@@ -121,7 +114,10 @@ class AppSidebar extends StatelessWidget {
                   ),
                 ),
               ),
-              Divider(height: 1, color: palette.border),
+              Divider(
+                height: 1,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
               _buildFooter(context),
             ],
           ),
@@ -131,35 +127,19 @@ class AppSidebar extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final theme = Theme.of(context);
     final palette = AppPalette.of(context);
-    final scheme = theme.colorScheme;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: palette.border)),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
       ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [palette.heroStart, palette.heroEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: const Icon(
-              Icons.local_florist_rounded,
-              color: Colors.white,
-              size: 21,
-            ),
-          ),
+          const AppLogo(size: 40),
           const SizedBox(width: 11),
           Expanded(
             child: Column(
@@ -171,7 +151,7 @@ class AppSidebar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontFamily: 'Lora',
-                    color: scheme.onSurface,
+                    color: palette.navText,
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                   ),
@@ -180,7 +160,7 @@ class AppSidebar extends StatelessWidget {
                 Text(
                   'Management System',
                   style: TextStyle(
-                    color: palette.muted,
+                    color: palette.navMuted,
                     fontSize: 9.5,
                     letterSpacing: 0.5,
                   ),
@@ -203,11 +183,11 @@ class AppSidebar extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 14,
-            backgroundColor: palette.brandSoft,
+            backgroundColor: Colors.white.withValues(alpha: 0.14),
             child: Text(
               _initial(user.name),
               style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
+                color: palette.navText,
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
               ),
@@ -224,12 +204,13 @@ class AppSidebar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: palette.navText,
                   ),
                 ),
                 Text(
                   user.role.label,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: palette.muted,
+                    color: palette.navMuted,
                     fontSize: 10,
                   ),
                 ),
@@ -256,7 +237,7 @@ class AppSidebar extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: theme.textTheme.labelSmall?.copyWith(
-          color: palette.muted,
+          color: palette.navMuted,
           fontSize: 9.5,
           letterSpacing: 1.1,
         ),
@@ -272,14 +253,13 @@ class AppSidebar extends StatelessWidget {
     bool danger = false,
   }) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final palette = AppPalette.of(context);
     final isSelected = currentRoute == route && !danger;
     final foreground = danger
-        ? palette.danger
+        ? const Color(0xFFF0A9A2)
         : isSelected
-        ? scheme.primary
-        : scheme.onSurface.withValues(alpha: 0.82);
+        ? Colors.white
+        : palette.navText;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
@@ -294,9 +274,14 @@ class AppSidebar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
-                  ? scheme.primary.withValues(alpha: 0.09)
+                  ? Colors.white.withValues(alpha: 0.10)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
+              border: isSelected
+                  ? Border.all(
+                      color: palette.navActive.withValues(alpha: 0.45),
+                    )
+                  : Border.all(color: Colors.transparent),
             ),
             child: Row(
               children: [
@@ -304,10 +289,10 @@ class AppSidebar extends StatelessWidget {
                   icon,
                   size: 19,
                   color: isSelected
-                      ? scheme.primary
+                      ? palette.navActive
                       : danger
-                      ? palette.danger
-                      : palette.muted,
+                      ? const Color(0xFFF0A9A2)
+                      : palette.navMuted,
                 ),
                 const SizedBox(width: 11),
                 Expanded(
@@ -327,7 +312,7 @@ class AppSidebar extends StatelessWidget {
                     width: 5,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: scheme.primary,
+                      color: palette.navActive,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -340,15 +325,13 @@ class AppSidebar extends StatelessWidget {
   }
 
   Widget _roleSwitcher(BuildContext context) {
-    final palette = AppPalette.of(context);
-
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: palette.surfaceAlt,
+        color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: palette.border),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Row(
         children: [
@@ -361,7 +344,6 @@ class AppSidebar extends StatelessWidget {
 
   Widget _roleChip(BuildContext context, AppRole role, IconData icon) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final palette = AppPalette.of(context);
     final isActive = user.role == role;
     final requiresLogin = role == AppRole.admin && !isActive;
@@ -378,7 +360,7 @@ class AppSidebar extends StatelessWidget {
             curve: Curves.easeOut,
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             decoration: BoxDecoration(
-              color: isActive ? scheme.primary : Colors.transparent,
+              color: isActive ? palette.navActive : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -387,7 +369,7 @@ class AppSidebar extends StatelessWidget {
                 Icon(
                   icon,
                   size: 14,
-                  color: isActive ? scheme.onPrimary : palette.muted,
+                  color: isActive ? Colors.white : palette.navMuted,
                 ),
                 const SizedBox(width: 5),
                 Flexible(
@@ -397,8 +379,8 @@ class AppSidebar extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: isActive
-                          ? scheme.onPrimary
-                          : scheme.onSurface.withValues(alpha: 0.8),
+                          ? Colors.white
+                          : palette.navText.withValues(alpha: 0.85),
                       fontWeight: FontWeight.w600,
                       fontSize: 11.5,
                     ),
@@ -410,7 +392,7 @@ class AppSidebar extends StatelessWidget {
                     child: Icon(
                       Icons.lock_outline_rounded,
                       size: 11,
-                      color: palette.muted,
+                      color: palette.navMuted,
                     ),
                   ),
               ],
@@ -441,9 +423,9 @@ class AppSidebar extends StatelessWidget {
               margin: const EdgeInsets.fromLTRB(14, 4, 14, 4),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: palette.surfaceAlt,
+                color: Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: palette.border),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
               ),
               child: Row(
                 children: [
@@ -452,7 +434,7 @@ class AppSidebar extends StatelessWidget {
                         ? Icons.dark_mode_rounded
                         : Icons.light_mode_rounded,
                     size: 17,
-                    color: theme.colorScheme.primary,
+                    color: palette.navActive,
                   ),
                   const SizedBox(width: 9),
                   Expanded(
@@ -461,6 +443,7 @@ class AppSidebar extends StatelessWidget {
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w500,
+                        color: palette.navText,
                       ),
                     ),
                   ),
@@ -477,7 +460,7 @@ class AppSidebar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
           child: Row(
             children: [
-              Icon(Icons.verified_outlined, size: 12, color: palette.muted),
+              Icon(Icons.verified_outlined, size: 12, color: palette.navMuted),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -485,7 +468,7 @@ class AppSidebar extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: palette.muted,
+                    color: palette.navMuted,
                     fontSize: 10,
                   ),
                 ),

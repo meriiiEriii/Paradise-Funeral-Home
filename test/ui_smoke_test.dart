@@ -141,7 +141,6 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    await openRoute('Payment');
     await openRoute('Staff');
     await openRoute('Discount Approvals');
     await openRoute('Delayed Accounts');
@@ -195,7 +194,6 @@ void main() {
     }
 
     await openRoute('All Customers');
-    await openRoute('Payment');
     await openRoute('Staff');
     await openRoute('Discount Approvals');
     await openRoute('Delayed Accounts');
@@ -261,7 +259,6 @@ void main() {
     }
 
     await openRoute('All Customers');
-    await openRoute('Payment');
     await openRoute('Staff');
     await openRoute('Discount Approvals');
     await openRoute('Delayed Accounts');

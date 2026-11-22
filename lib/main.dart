@@ -11,6 +11,7 @@ import 'data/firestore_customer_repository.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_drawer.dart';
+import 'widgets/app_logo.dart';
 import 'widgets/app_sidebar.dart';
 import 'screens/add_customer_screen.dart';
 import 'screens/approvals_screen.dart';
@@ -25,6 +26,7 @@ import 'screens/notifications_screen.dart';
 import 'screens/paid_accounts_screen.dart';
 import 'screens/payment_screen.dart';
 import 'screens/search_customer_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/staff_requests_screen.dart';
 
 Future<void> main() async {
@@ -116,6 +118,12 @@ class _CIPMSAppState extends State<CIPMSApp> {
       _themeMode = _isDark ? ThemeMode.light : ThemeMode.dark;
     });
     widget.onThemeChanged?.call(_themeMode);
+  }
+
+  void _setThemeMode(ThemeMode mode) {
+    if (_themeMode == mode) return;
+    setState(() => _themeMode = mode);
+    widget.onThemeChanged?.call(mode);
   }
 
   GoRouter _buildRouter() {
@@ -247,6 +255,24 @@ class _CIPMSAppState extends State<CIPMSApp> {
               ),
             ),
             GoRoute(
+              path: '/settings',
+              pageBuilder: (context, state) {
+                final user = session.user;
+                if (user == null) {
+                  return _shellPage(state, const SizedBox.shrink());
+                }
+                return _shellPage(
+                  state,
+                  SettingsScreen(
+                    user: user,
+                    themeMode: _themeMode,
+                    onSetThemeMode: _setThemeMode,
+                    onSignOut: () => session.signOut(),
+                  ),
+                );
+              },
+            ),
+            GoRoute(
               path: '/paid',
               pageBuilder: (context, state) {
                 final user = session.user;
@@ -376,15 +402,7 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: Colors.white24,
-                child: Icon(
-                  Icons.local_florist_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
+              AppLogo(size: 80),
               SizedBox(height: 18),
               Text(
                 'Paradise Funeral Home',
@@ -557,8 +575,6 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (route) {
       case 'search':
         return '/search';
-      case 'payment':
-        return '/payment';
       case 'delayed':
         return '/delayed';
       case 'paid':
@@ -569,6 +585,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return '/approvals';
       case 'staff-requests':
         return '/staff-requests';
+      case 'settings':
+        return '/settings';
       default:
         return '/dashboard';
     }
@@ -594,6 +612,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return 'Discount Approvals';
       case 'staff-requests':
         return 'Staff';
+      case 'settings':
+        return 'Settings';
       default:
         return 'Paradise Funeral Home: Management System';
     }
@@ -628,11 +648,24 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     final appBar = AppBar(
+      leadingWidth: isWide && !isDashboard ? 100 : null,
       leading: isWide
-          ? IconButton(
-              tooltip: 'Open menu',
-              icon: const Icon(Icons.menu_rounded),
-              onPressed: () => setState(() => _sidebarOpen = !_sidebarOpen),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Open menu',
+                  icon: const Icon(Icons.menu_rounded),
+                  onPressed: () =>
+                      setState(() => _sidebarOpen = !_sidebarOpen),
+                ),
+                if (!isDashboard)
+                  IconButton(
+                    tooltip: 'Back',
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => context.go('/dashboard'),
+                  ),
+              ],
             )
           : IconButton(
               tooltip: isDashboard ? 'Open menu' : 'Back',
@@ -647,23 +680,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         title: Row(
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [palette.heroStart, palette.heroEnd],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: const Icon(
-                Icons.local_florist_rounded,
-                color: Colors.white,
-                size: 17,
-              ),
-            ),
+            const AppLogo(size: 34),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

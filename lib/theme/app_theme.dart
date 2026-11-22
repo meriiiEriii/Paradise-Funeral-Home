@@ -44,6 +44,10 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.muted,
     required this.heroStart,
     required this.heroEnd,
+    required this.navSurface,
+    required this.navText,
+    required this.navMuted,
+    required this.navActive,
   });
 
   final Color success;
@@ -61,6 +65,12 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color heroStart;
   final Color heroEnd;
 
+  // Navigation sidebar (deep navy panel).
+  final Color navSurface;
+  final Color navText;
+  final Color navMuted;
+  final Color navActive;
+
   static const light = AppPalette(
     success: Color(0xFF177A4B),
     successSoft: Color(0xFFE4F3EB),
@@ -70,12 +80,16 @@ class AppPalette extends ThemeExtension<AppPalette> {
     dangerSoft: Color(0xFFFBEAE7),
     accent: Color(0xFF3E5C8A),
     accentSoft: Color(0xFFE9EFF7),
-    brandSoft: Color(0xFFE4EDFA),
-    surfaceAlt: Color(0xFFF2F5F9),
-    border: Color(0xFFDFE5EE),
-    muted: Color(0xFF5D6B80),
-    heroStart: Color(0xFF17395F),
-    heroEnd: Color(0xFF215789),
+    brandSoft: Color(0xFFDCE8F8),
+    surfaceAlt: Color(0xFFE6EDF6),
+    border: Color(0xFFD3DEEC),
+    muted: Color(0xFF56677E),
+    heroStart: Color(0xFF122E56),
+    heroEnd: Color(0xFF1E56A0),
+    navSurface: Color(0xFF142E56),
+    navText: Color(0xFFE3ECF9),
+    navMuted: Color(0xFF8FA6C9),
+    navActive: Color(0xFF5B93DE),
   );
 
   static const dark = AppPalette(
@@ -91,8 +105,12 @@ class AppPalette extends ThemeExtension<AppPalette> {
     surfaceAlt: Color(0xFF152134),
     border: Color(0xFF24344D),
     muted: Color(0xFF8B9BB3),
-    heroStart: Color(0xFF122742),
+    heroStart: Color(0xFF0E2038),
     heroEnd: Color(0xFF1B3E66),
+    navSurface: Color(0xFF0D1B30),
+    navText: Color(0xFFDCE5F2),
+    navMuted: Color(0xFF7E93B2),
+    navActive: Color(0xFF5B93DE),
   );
 
   static AppPalette of(BuildContext context) =>
@@ -114,6 +132,10 @@ class AppPalette extends ThemeExtension<AppPalette> {
     Color? muted,
     Color? heroStart,
     Color? heroEnd,
+    Color? navSurface,
+    Color? navText,
+    Color? navMuted,
+    Color? navActive,
   }) {
     return AppPalette(
       success: success ?? this.success,
@@ -130,6 +152,10 @@ class AppPalette extends ThemeExtension<AppPalette> {
       muted: muted ?? this.muted,
       heroStart: heroStart ?? this.heroStart,
       heroEnd: heroEnd ?? this.heroEnd,
+      navSurface: navSurface ?? this.navSurface,
+      navText: navText ?? this.navText,
+      navMuted: navMuted ?? this.navMuted,
+      navActive: navActive ?? this.navActive,
     );
   }
 
@@ -151,6 +177,10 @@ class AppPalette extends ThemeExtension<AppPalette> {
       muted: Color.lerp(muted, other.muted, t)!,
       heroStart: Color.lerp(heroStart, other.heroStart, t)!,
       heroEnd: Color.lerp(heroEnd, other.heroEnd, t)!,
+      navSurface: Color.lerp(navSurface, other.navSurface, t)!,
+      navText: Color.lerp(navText, other.navText, t)!,
+      navMuted: Color.lerp(navMuted, other.navMuted, t)!,
+      navActive: Color.lerp(navActive, other.navActive, t)!,
     );
   }
 }
@@ -181,7 +211,7 @@ class AppTheme {
           error: AppColors.danger,
           onError: Colors.white,
         );
-    return _build(scheme, palette, canvas: AppColors.canvas);
+    return _build(scheme, palette, canvas: const Color(0xFFE7EEF7));
   }
 
   static ThemeData dark() {

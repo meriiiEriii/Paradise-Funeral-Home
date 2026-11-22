@@ -16,3 +16,20 @@ String? validateContactNumber(String? value) {
   }
   return null;
 }
+
+/// Capitalizes the first letter of every word, keeping the rest of each word
+/// exactly as typed ("juan dela cruz" -> "Juan Dela Cruz").
+String capitalizeWords(String value) {
+  final buffer = StringBuffer();
+  var capitalizeNext = true;
+  for (final char in value.split('')) {
+    if (capitalizeNext && char != ' ') {
+      buffer.write(char.toUpperCase());
+      capitalizeNext = false;
+    } else {
+      buffer.write(char);
+    }
+    if (char == ' ') capitalizeNext = true;
+  }
+  return buffer.toString();
+}

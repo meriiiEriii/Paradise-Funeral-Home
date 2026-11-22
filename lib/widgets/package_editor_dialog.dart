@@ -4,6 +4,7 @@ import '../data/customer_store.dart';
 import '../models/customer.dart';
 import '../models/package_template.dart';
 import '../theme/app_theme.dart';
+import '../utils/validators.dart' show capitalizeWords;
 
 /// Admin dialog for creating or editing a pre-made package template.
 ///
@@ -73,6 +74,16 @@ class _PackageEditorDialogState extends State<_PackageEditorDialog> {
       _itemNameCtrls.removeAt(index).dispose();
       _itemAmountCtrls.removeAt(index).dispose();
     });
+  }
+
+  void _autoCapitalize(TextEditingController controller) {
+    final raw = controller.text;
+    final formatted = capitalizeWords(raw);
+    if (formatted == raw) return;
+    controller.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 
   String _titleCase(String value) {
@@ -211,6 +222,7 @@ class _PackageEditorDialogState extends State<_PackageEditorDialog> {
                   key: const Key('package-name-field'),
                   controller: _nameCtrl,
                   textCapitalization: TextCapitalization.words,
+                  onChanged: (_) => _autoCapitalize(_nameCtrl),
                   decoration: const InputDecoration(
                     labelText: 'Package name',
                     hintText: 'e.g. Package 1',
@@ -240,6 +252,7 @@ class _PackageEditorDialogState extends State<_PackageEditorDialog> {
                             key: Key('package-item-name-$i'),
                             controller: _itemNameCtrls[i],
                             textCapitalization: TextCapitalization.words,
+                            onChanged: (_) => _autoCapitalize(_itemNameCtrls[i]),
                             decoration: InputDecoration(
                               labelText: 'Item ${i + 1}',
                               hintText: 'e.g. Casket',
