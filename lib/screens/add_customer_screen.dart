@@ -1,9 +1,11 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../models/customer.dart';
+import '../models/package_template.dart';
 import '../data/customer_store.dart';
 import '../theme/app_theme.dart';
 import '../utils/validators.dart';
+import '../widgets/package_editor_dialog.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
 
@@ -23,9 +25,15 @@ class _ItemEntry {
 
 class AddCustomerScreen extends StatefulWidget {
   final CustomerStore store;
+  final bool isAdmin;
   final VoidCallback? onBack;
 
-  const AddCustomerScreen({super.key, required this.store, this.onBack});
+  const AddCustomerScreen({
+    super.key,
+    required this.store,
+    this.isAdmin = true,
+    this.onBack,
+  });
 
   @override
   State<AddCustomerScreen> createState() => _AddCustomerScreenState();
@@ -42,15 +50,22 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   DateTime _dateStarted = DateTime.now();
   DateTime _dueDate = DateTime.now().add(const Duration(days: 10));
   bool _isSubmitting = false;
+  String _selectedTemplateId = '';
 
   @override
   void initState() {
     super.initState();
+    widget.store.addListener(_onStoreChanged);
     _items.add(_ItemEntry());
+  }
+
+  void _onStoreChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    widget.store.removeListener(_onStoreChanged);
     _nameCtrl.dispose();
     _addressCtrl.dispose();
     _contactCtrl.dispose();
@@ -72,6 +87,71 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
   String get _normalizedContact =>
       _contactCtrl.text.trim().replaceAll(RegExp(r'\D'), '');
+
+  void _selectTemplate(String templateId) {
+    setState(() {
+      _selectedTemplateId = templateId;
+      if (templateId.isEmpty) return;
+      final template = widget.store.getPackageTemplateById(templateId);
+      if (template == null) return;
+      _packageNameCtrl.text = template.name;
+      for (final item in _items) {
+        item.dispose();
+      }
+      _items
+        ..clear()
+        ..addAll(
+          template.items
+              .map(
+                (item) => _ItemEntry(
+                  name: item.name,
+                  amount: item.amount.toStringAsFixed(2),
+                ),
+              ),
+        );
+      if (_items.isEmpty) _items.add(_ItemEntry());
+    });
+  }
+
+  Future<void> _createPackage() async {
+    final saved = await showPackageEditorDialog(
+      context,
+      store: widget.store,
+    );
+    if (saved == null || !mounted) return;
+    _selectTemplate(saved.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Package "${saved.name}" created.')),
+    );
+  }
+
+  Future<void> _editSelectedPackage() async {
+    final template = widget.store.getPackageTemplateById(
+      _selectedTemplateId,
+    );
+    if (template == null) return;
+    final saved = await showPackageEditorDialog(
+      context,
+      store: widget.store,
+      existing: template,
+    );
+    if (saved == null || !mounted) return;
+    if (widget.store.getPackageTemplateById(saved.id) == null) {
+      // The template was deleted.
+      setState(() {
+        _selectedTemplateId = '';
+        _packageNameCtrl.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Package "${template.name}" deleted.')),
+      );
+      return;
+    }
+    _selectTemplate(saved.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Package "${saved.name}" updated.')),
+    );
+  }
 
   /// Capitalizes the first letter of every word ("juan dela cruz" ->
   /// "Juan Dela Cruz").
@@ -326,11 +406,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildField(
-            'Package Name (optional)',
-            _packageNameCtrl,
-            Icons.sell_outlined,
-          ),
+          _buildPackageSelector(),
           const SizedBox(height: 16),
           ...List.generate(_items.length, (index) => _buildItemRow(index)),
           const SizedBox(height: 4),
@@ -359,6 +435,86 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPackageSelector() {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+    final templates = widget.store.packageTemplates;
+    PackageTemplate? selected;
+    for (final template in templates) {
+      if (template.id == _selectedTemplateId) {
+        selected = template;
+        break;
+      }
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Package',
+              prefixIcon: const Icon(Icons.sell_outlined, size: 19),
+              helperText: widget.isAdmin
+                  ? 'Select a pre-made package or enter items manually.'
+                  : 'Pre-made packages are managed by the administrator.',
+              helperMaxLines: 2,
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedTemplateId,
+                isExpanded: true,
+                isDense: true,
+                hint: const Text('Custom (manual entry)'),
+                items: [
+                  const DropdownMenuItem(
+                    value: '',
+                    child: Text('Custom (manual entry)'),
+                  ),
+                  for (final template in templates)
+                    DropdownMenuItem(
+                      value: template.id,
+                      child: Text(
+                        '${template.name} · ₱${template.total.toStringAsFixed(2)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (value) => _selectTemplate(value ?? ''),
+              ),
+            ),
+          ),
+        ),
+        if (widget.isAdmin) ...[
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: IconButton(
+              tooltip: 'New package',
+              icon: const Icon(Icons.add_circle_outline_rounded, size: 24),
+              color: theme.colorScheme.primary,
+              onPressed: _createPackage,
+            ),
+          ),
+          if (selected != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: IconButton(
+                tooltip: 'Edit package',
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 21,
+                  color: palette.muted,
+                ),
+                onPressed: _editSelectedPackage,
+              ),
+            ),
+        ],
+      ],
     );
   }
 

@@ -146,9 +146,7 @@ class _CIPMSAppState extends State<CIPMSApp> {
         }
 
         final adminOnly =
-            location == '/add' ||
-            location == '/approvals' ||
-            location == '/staff-requests';
+            location == '/approvals' || location == '/staff-requests';
         if (adminOnly && !user.isAdmin) {
           return '/dashboard';
         }
@@ -205,6 +203,7 @@ class _CIPMSAppState extends State<CIPMSApp> {
                 state,
                 AddCustomerScreen(
                   store: store,
+                  isAdmin: session.user?.isAdmin ?? false,
                   onBack: () => context.go('/dashboard'),
                 ),
               ),
@@ -424,6 +423,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _sidebarOpen = true;
 
   AppUser get _user => widget.session.user ?? widget.user;
 
@@ -567,8 +567,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  bool get _showFab =>
-      widget.currentRoute == 'dashboard' && _user.isAdmin;
+  bool get _showFab => widget.currentRoute == 'dashboard';
 
   @override
   Widget build(BuildContext context) {
@@ -597,8 +596,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     final appBar = AppBar(
-      leading: isDashboard && isWide
-          ? null
+      leading: isWide
+          ? IconButton(
+              tooltip: 'Open menu',
+              icon: const Icon(Icons.menu_rounded),
+              onPressed: () => setState(() => _sidebarOpen = !_sidebarOpen),
+            )
           : IconButton(
               tooltip: isDashboard ? 'Open menu' : 'Back',
               icon: Icon(
@@ -697,15 +700,17 @@ class _HomeScreenState extends State<HomeScreen> {
         body: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppSidebar(
-              user: _user,
-              currentRoute: widget.currentRoute,
-              onNavigate: _navigate,
-              onSelectRole: _selectRole,
-              isDark: isDark,
-              onToggleTheme: widget.onToggleTheme,
-            ),
-            VerticalDivider(width: 1, thickness: 1, color: palette.border),
+            if (_sidebarOpen) ...[
+              AppSidebar(
+                user: _user,
+                currentRoute: widget.currentRoute,
+                onNavigate: _navigate,
+                onSelectRole: _selectRole,
+                isDark: isDark,
+                onToggleTheme: widget.onToggleTheme,
+              ),
+              VerticalDivider(width: 1, thickness: 1, color: palette.border),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

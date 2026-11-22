@@ -9,6 +9,7 @@ import '../config/app_config.dart';
 import '../models/app_notification.dart';
 import '../models/customer.dart';
 import '../models/discount_request.dart';
+import '../models/package_template.dart';
 import '../models/staff_request.dart';
 import 'customer_repository.dart';
 
@@ -30,6 +31,9 @@ class FirestoreCustomerRepository implements CustomerRepository {
 
   CollectionReference<Map<String, dynamic>> get _notifications =>
       _firestore.collection('notifications');
+
+  CollectionReference<Map<String, dynamic>> get _packageTemplates =>
+      _firestore.collection('packageTemplates');
 
   DocumentReference<Map<String, dynamic>> _customerRef(String id) =>
       _customers.doc(id);
@@ -808,6 +812,83 @@ class FirestoreCustomerRepository implements CustomerRepository {
             });
       });
     });
+  }
+
+  @override
+  Stream<List<PackageTemplate>> watchPackageTemplates() {
+    return _auth.authStateChanges().asyncExpand((user) {
+      if (user == null) return Stream.value(const <PackageTemplate>[]);
+      return _packageTemplates.snapshots().map((snapshot) {
+        final templates = snapshot.docs.map(_packageTemplateFromDocument).toList()
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+        return templates;
+      });
+    });
+  }
+
+  @override
+  Future<PackageTemplate> savePackageTemplate(
+    PackageTemplate template,
+  ) async {
+    final user = _requireUser();
+    return _run(() async {
+      final data = {
+        'name': template.name.trim(),
+        'items': template.items
+            .map(
+              (item) => {
+                'name': item.name,
+                'amountCentavos': item.amountCentavos,
+              },
+            )
+            .toList(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'createdBy': user.uid,
+      };
+      final docRef = template.id.isEmpty
+          ? _packageTemplates.doc()
+          : _packageTemplates.doc(template.id);
+      await docRef.set(data);
+      return PackageTemplate(
+        id: docRef.id,
+        name: template.name.trim(),
+        items: template.items,
+        createdAt: template.createdAt,
+      );
+    });
+  }
+
+  @override
+  Future<void> deletePackageTemplate(String templateId) async {
+    _requireUser();
+    await _run(() async {
+      await _packageTemplates.doc(templateId).delete();
+    });
+  }
+
+  PackageTemplate _packageTemplateFromDocument(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    return PackageTemplate(
+      id: doc.id,
+      name: data['name'] as String? ?? '',
+      items:
+          (data['items'] as List?)
+              ?.map((item) {
+                final map = Map<String, dynamic>.from(item as Map);
+                return PackageItem(
+                  name: map['name'] as String? ?? '',
+                  amount:
+                      ((map['amountCentavos'] as num?)?.toInt() ?? 0) / 100.0,
+                );
+              })
+              .toList() ??
+          const [],
+      createdAt: _date(data['createdAt']) ?? DateTime.now(),
+    );
   }
 
   @override

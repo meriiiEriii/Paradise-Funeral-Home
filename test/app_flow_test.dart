@@ -8,6 +8,7 @@ import 'package:inventory/data/customer_store.dart';
 import 'package:inventory/main.dart';
 import 'package:inventory/models/app_notification.dart';
 import 'package:inventory/models/customer.dart';
+import 'package:inventory/models/package_template.dart';
 import 'package:inventory/utils/validators.dart';
 
 import 'support/fake_auth_session.dart';
@@ -696,6 +697,77 @@ void main() {
       expect(find.text('Discount pending'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('admin creates a pre-made package and uses it', (tester) async {
+      final store = CustomerStore();
+      await _pumpApp(tester, store, initialLocation: '/add');
+
+      // Admin sees the manage controls next to the package dropdown.
+      expect(find.byTooltip('New package'), findsOneWidget);
+      expect(find.byTooltip('Edit package'), findsNothing);
+
+      await tester.tap(find.byTooltip('New package'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('package-name-field')),
+        'Package 1',
+      );
+      await tester.enterText(
+        find.byKey(const Key('package-item-name-0')),
+        'Casket',
+      );
+      await tester.enterText(
+        find.byKey(const Key('package-item-amount-0')),
+        '15000',
+      );
+      await tester.tap(find.text('Create package'));
+      await tester.pumpAndSettle();
+
+      // The template exists and is selected in the dropdown.
+      expect(store.packageTemplates.length, 1);
+      expect(store.packageTemplates.first.name, 'Package 1');
+      expect(find.text('Package 1 · ₱15000.00'), findsOneWidget);
+
+      // Selecting prefills the item rows.
+      expect(find.text('Casket'), findsOneWidget);
+      expect(find.text('15000.00'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('staff can pick a pre-made package but not manage it', (
+      tester,
+    ) async {
+      final store = CustomerStore();
+      await store.savePackageTemplate(
+        PackageTemplate(
+          id: 'PT-001',
+          name: 'Package 2',
+          items: [PackageItem(name: 'Urn', amount: 8000)],
+          createdAt: DateTime.now(),
+        ),
+      );
+      await _pumpApp(
+        tester,
+        store,
+        initialLocation: '/add',
+        session: FakeAuthSession.staff(),
+      );
+
+      expect(find.byTooltip('New package'), findsNothing);
+
+      // Open the dropdown and pick the pre-made package.
+      await tester.ensureVisible(find.byType(DropdownButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Package 2 · ₱8000.00').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Urn'), findsOneWidget);
+      expect(find.text('8000.00'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('Authentication and roles', () {
@@ -781,12 +853,12 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('staff sees payment access but not admin-only navigation', (
+    testWidgets('staff sees payment access and new customer but not admin navigation', (
       tester,
     ) async {
       await _pumpApp(tester, _seedStore(), session: FakeAuthSession.staff());
 
-      expect(find.byTooltip('Add Customer'), findsNothing);
+      expect(find.byTooltip('Add Customer'), findsOneWidget);
 
       // Wide viewport: the sidebar is permanently visible.
       expect(find.text('All Customers'), findsOneWidget);
@@ -802,12 +874,28 @@ void main() {
       await _pumpApp(
         tester,
         _seedStore(),
-        initialLocation: '/add',
+        initialLocation: '/approvals',
         session: FakeAuthSession.staff(),
       );
 
       expect(find.text('Active Accounts'), findsOneWidget);
-      expect(find.text('New Customer'), findsNothing);
+      expect(find.text('Discount Approvals'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('staff can open the new customer page', (tester) async {
+      await _pumpApp(
+        tester,
+        _seedStore(),
+        initialLocation: '/add',
+        session: FakeAuthSession.staff(),
+      );
+
+      expect(find.text('New Customer'), findsWidgets);
+      expect(find.text('Package'), findsOneWidget);
+      // Staff cannot manage pre-made packages.
+      expect(find.byTooltip('New package'), findsNothing);
+      expect(find.byTooltip('Edit package'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -838,6 +926,26 @@ void main() {
       await tester.tap(find.text('Staff List (0)'));
       await tester.pumpAndSettle();
       expect(find.text('No staff yet'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('sidebar can be hidden with the menu button', (tester) async {
+      await _pumpApp(tester, _seedStore());
+
+      // Wide viewport: sidebar starts open.
+      expect(find.text('All Customers'), findsOneWidget);
+      expect(find.text('Management System'), findsOneWidget);
+
+      // The burger button hides it.
+      await tester.tap(find.byTooltip('Open menu'));
+      await tester.pumpAndSettle();
+      expect(find.text('Management System'), findsNothing);
+      expect(find.text('All Customers'), findsNothing);
+
+      // Tapping it again brings the sidebar back.
+      await tester.tap(find.byTooltip('Open menu'));
+      await tester.pumpAndSettle();
+      expect(find.text('Management System'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

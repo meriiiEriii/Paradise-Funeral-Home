@@ -5,6 +5,7 @@ import 'package:inventory/data/customer_repository.dart';
 import 'package:inventory/models/app_notification.dart';
 import 'package:inventory/models/customer.dart';
 import 'package:inventory/models/discount_request.dart';
+import 'package:inventory/models/package_template.dart';
 import 'package:inventory/models/staff_request.dart';
 
 /// Mimics FirestoreCustomerRepository behaviour: writes do not mutate local
@@ -15,6 +16,7 @@ class FakeFirestoreRepository implements CustomerRepository {
   final List<AppNotification> notifications = [];
   final List<StaffRequest> staffRequests = [];
   final List<StaffRequest> staffList = [];
+  final List<PackageTemplate> packageTemplates = [];
 
   final _customersController = StreamController<List<Customer>>.broadcast();
   final _requestsController =
@@ -24,6 +26,8 @@ class FakeFirestoreRepository implements CustomerRepository {
   final _staffRequestsController =
       StreamController<List<StaffRequest>>.broadcast();
   final _staffListController = StreamController<List<StaffRequest>>.broadcast();
+  final _packageTemplatesController =
+      StreamController<List<PackageTemplate>>.broadcast();
 
   int _seq = 0;
 
@@ -45,6 +49,7 @@ class FakeFirestoreRepository implements CustomerRepository {
     _notificationsController.close();
     _staffRequestsController.close();
     _staffListController.close();
+    _packageTemplatesController.close();
   }
 
   @override
@@ -226,6 +231,45 @@ class FakeFirestoreRepository implements CustomerRepository {
   Future<void> rejectStaff(String uid) async {
     staffRequests.removeWhere((r) => r.uid == uid);
     Future.microtask(_emitStaffRequests);
+  }
+
+  @override
+  Stream<List<PackageTemplate>> watchPackageTemplates() async* {
+    yield List.of(packageTemplates);
+    yield* _packageTemplatesController.stream.map((list) => List.of(list));
+  }
+
+  @override
+  Future<PackageTemplate> savePackageTemplate(
+    PackageTemplate template,
+  ) async {
+    final id = template.id.isEmpty
+        ? nextId('PT-')
+        : template.id;
+    final saved = PackageTemplate(
+      id: id,
+      name: template.name,
+      items: template.items,
+      createdAt: template.createdAt,
+    );
+    final index = packageTemplates.indexWhere((t) => t.id == id);
+    if (index == -1) {
+      packageTemplates.add(saved);
+    } else {
+      packageTemplates[index] = saved;
+    }
+    Future.microtask(
+      () => _packageTemplatesController.add([...packageTemplates]),
+    );
+    return saved;
+  }
+
+  @override
+  Future<void> deletePackageTemplate(String templateId) async {
+    packageTemplates.removeWhere((t) => t.id == templateId);
+    Future.microtask(
+      () => _packageTemplatesController.add([...packageTemplates]),
+    );
   }
 
   @override

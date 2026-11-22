@@ -2,6 +2,7 @@ import '../auth/app_user.dart';
 import '../models/app_notification.dart';
 import '../models/customer.dart';
 import '../models/discount_request.dart';
+import '../models/package_template.dart';
 import '../models/staff_request.dart';
 
 class CustomerRepositoryException implements Exception {
@@ -56,6 +57,15 @@ abstract class CustomerRepository {
 
   /// Approved staff accounts (the Staff list tab).
   Stream<List<StaffRequest>> watchStaffList();
+
+  /// Admin-defined pre-made packages, selectable in the New Customer form.
+  Stream<List<PackageTemplate>> watchPackageTemplates();
+
+  /// Creates or updates a package template (admin only). Returns the saved
+  /// template with its document id.
+  Future<PackageTemplate> savePackageTemplate(PackageTemplate template);
+
+  Future<void> deletePackageTemplate(String templateId);
 
   Future<void> approveStaff(String uid);
 

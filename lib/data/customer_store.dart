@@ -6,6 +6,7 @@ import '../auth/app_user.dart';
 import '../models/app_notification.dart';
 import '../models/customer.dart';
 import '../models/discount_request.dart';
+import '../models/package_template.dart';
 import '../models/staff_request.dart';
 import 'customer_repository.dart';
 
@@ -16,11 +17,13 @@ class CustomerStore extends ChangeNotifier {
   final List<AppNotification> _notifications = [];
   final List<StaffRequest> _staffRequests = [];
   final List<StaffRequest> _staffList = [];
+  final List<PackageTemplate> _packageTemplates = [];
   StreamSubscription<List<Customer>>? _subscription;
   StreamSubscription<List<DiscountRequest>>? _requestSubscription;
   StreamSubscription<List<AppNotification>>? _notificationSubscription;
   StreamSubscription<List<StaffRequest>>? _staffRequestSubscription;
   StreamSubscription<List<StaffRequest>>? _staffListSubscription;
+  StreamSubscription<List<PackageTemplate>>? _packageTemplateSubscription;
   Completer<void>? _firstLoad;
   bool _isLoading = false;
   String? _error;
@@ -73,6 +76,60 @@ class CustomerStore extends ChangeNotifier {
   List<StaffRequest> get staffList => List.unmodifiable(_staffList);
 
   int get staffCount => _staffList.length;
+
+  List<PackageTemplate> get packageTemplates {
+    final list = [..._packageTemplates]..sort(
+      (a, b) {
+        final aNum = int.tryParse(a.name.replaceAll(RegExp(r'\D'), ''));
+        final bNum = int.tryParse(b.name.replaceAll(RegExp(r'\D'), ''));
+        if (aNum != null && bNum != null) return aNum.compareTo(bNum);
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      },
+    );
+    return List.unmodifiable(list);
+  }
+
+  PackageTemplate? getPackageTemplateById(String id) {
+    for (final template in _packageTemplates) {
+      if (template.id == id) return template;
+    }
+    return null;
+  }
+
+  /// Creates or updates a pre-made package (admin only).
+  Future<PackageTemplate> savePackageTemplate(PackageTemplate template) async {
+    if (_repository != null) {
+      return _repository.savePackageTemplate(template);
+    }
+    if (template.id.isEmpty) {
+      final created = PackageTemplate(
+        id: 'PT-${(_packageTemplates.length + 1).toString().padLeft(3, '0')}',
+        name: template.name,
+        items: template.items,
+        createdAt: DateTime.now(),
+      );
+      _packageTemplates.add(created);
+      notifyListeners();
+      return created;
+    }
+    final index = _packageTemplates.indexWhere((t) => t.id == template.id);
+    if (index != -1) {
+      _packageTemplates[index] = template;
+    } else {
+      _packageTemplates.add(template);
+    }
+    notifyListeners();
+    return template;
+  }
+
+  Future<void> deletePackageTemplate(String templateId) async {
+    if (_repository != null) {
+      await _repository.deletePackageTemplate(templateId);
+      return;
+    }
+    _packageTemplates.removeWhere((t) => t.id == templateId);
+    notifyListeners();
+  }
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
 
@@ -183,6 +240,17 @@ class CustomerStore extends ChangeNotifier {
       cancelOnError: false,
     );
 
+    _packageTemplateSubscription = _repository.watchPackageTemplates().listen(
+      (templates) {
+        _packageTemplates
+          ..clear()
+          ..addAll(templates);
+        notifyListeners();
+      },
+      onError: (Object error, StackTrace stackTrace) {},
+      cancelOnError: false,
+    );
+
     await _firstLoad!.future.timeout(
       const Duration(seconds: 10),
       onTimeout: () {
@@ -230,11 +298,13 @@ class CustomerStore extends ChangeNotifier {
     await _notificationSubscription?.cancel();
     await _staffRequestSubscription?.cancel();
     await _staffListSubscription?.cancel();
+    await _packageTemplateSubscription?.cancel();
     _subscription = null;
     _requestSubscription = null;
     _notificationSubscription = null;
     _staffRequestSubscription = null;
     _staffListSubscription = null;
+    _packageTemplateSubscription = null;
     _firstLoad = null;
     await initialize();
   }
@@ -748,6 +818,7 @@ class CustomerStore extends ChangeNotifier {
     _notificationSubscription?.cancel();
     _staffRequestSubscription?.cancel();
     _staffListSubscription?.cancel();
+    _packageTemplateSubscription?.cancel();
     super.dispose();
   }
 }

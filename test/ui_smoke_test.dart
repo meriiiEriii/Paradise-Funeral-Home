@@ -87,15 +87,16 @@ void main() {
   testWidgets('Sidebar navigation and theme toggle work', (tester) async {
     await _pumpApp(tester, const Size(1400, 900));
 
-    // Wide viewport: the sidebar is permanently visible, no menu button.
-    expect(find.byTooltip('Open menu'), findsNothing);
+    // Wide viewport: the sidebar starts open and can be toggled with the
+    // burger button.
+    expect(find.byTooltip('Open menu'), findsOneWidget);
     expect(find.text('All Customers'), findsOneWidget);
 
     await tester.tap(find.text('All Customers'));
     await tester.pumpAndSettle();
     expect(find.text('All Customers'), findsWidgets);
 
-    await tester.tap(find.byTooltip('Back'));
+    await tester.tap(find.text('Dashboard'));
     await tester.pumpAndSettle();
     expect(find.text('Active Accounts'), findsOneWidget);
 
@@ -112,17 +113,28 @@ void main() {
     await _pumpApp(tester, const Size(1400, 900));
 
     Future<void> openRoute(String label) async {
-      final menu = find.byTooltip('Open menu');
-      if (menu.evaluate().isNotEmpty) {
-        await tester.tap(menu);
-        await tester.pumpAndSettle();
+      final navVisible = find
+          .text('Management System')
+          .evaluate()
+          .isNotEmpty;
+      if (!navVisible) {
+        final menu = find.byTooltip('Open menu');
+        if (menu.evaluate().isNotEmpty) {
+          await tester.tap(menu);
+          await tester.pumpAndSettle();
+        }
       }
       await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      await tester.tap(find.byTooltip('Back'));
+      final back = find.byTooltip('Back');
+      if (back.evaluate().isNotEmpty) {
+        await tester.tap(back);
+      } else {
+        await tester.tap(find.text('Dashboard'));
+      }
       await tester.pumpAndSettle();
     }
 
@@ -154,17 +166,28 @@ void main() {
     await _pumpApp(tester, const Size(420, 900));
 
     Future<void> openRoute(String label) async {
-      final menu = find.byTooltip('Open menu');
-      if (menu.evaluate().isNotEmpty) {
-        await tester.tap(menu);
-        await tester.pumpAndSettle();
+      final navVisible = find
+          .text('Management System')
+          .evaluate()
+          .isNotEmpty;
+      if (!navVisible) {
+        final menu = find.byTooltip('Open menu');
+        if (menu.evaluate().isNotEmpty) {
+          await tester.tap(menu);
+          await tester.pumpAndSettle();
+        }
       }
       await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      await tester.tap(find.byTooltip('Back'));
+      final back = find.byTooltip('Back');
+      if (back.evaluate().isNotEmpty) {
+        await tester.tap(back);
+      } else {
+        await tester.tap(find.text('Dashboard'));
+      }
       await tester.pumpAndSettle();
     }
 
@@ -209,17 +232,28 @@ void main() {
     await _pumpApp(tester, const Size(320, 900));
 
     Future<void> openRoute(String label) async {
-      final menu = find.byTooltip('Open menu');
-      if (menu.evaluate().isNotEmpty) {
-        await tester.tap(menu);
-        await tester.pumpAndSettle();
+      final navVisible = find
+          .text('Management System')
+          .evaluate()
+          .isNotEmpty;
+      if (!navVisible) {
+        final menu = find.byTooltip('Open menu');
+        if (menu.evaluate().isNotEmpty) {
+          await tester.tap(menu);
+          await tester.pumpAndSettle();
+        }
       }
       await tester.ensureVisible(find.text(label).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      await tester.tap(find.byTooltip('Back'));
+      final back = find.byTooltip('Back');
+      if (back.evaluate().isNotEmpty) {
+        await tester.tap(back);
+      } else {
+        await tester.tap(find.text('Dashboard'));
+      }
       await tester.pumpAndSettle();
     }
 
