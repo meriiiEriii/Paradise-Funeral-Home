@@ -5,9 +5,9 @@ import '../data/app_preferences.dart';
 import '../data/customer_store.dart';
 import '../models/customer.dart';
 import '../theme/app_theme.dart';
+import '../widgets/customer_table.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/stat_card.dart';
-import '../widgets/status_badge.dart';
 
 class DashboardScreen extends StatefulWidget {
   final CustomerStore store;
@@ -389,7 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           StatCard(
             label: 'Package revenue',
-            value: '₱${store.totalRevenue.toStringAsFixed(0)}',
+            value: 'Ã¢â€šÂ±${store.totalRevenue.toStringAsFixed(0)}',
             caption: 'Across active accounts',
             icon: Icons.trending_up_rounded,
             accent: palette.accent,
@@ -845,45 +845,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: DataTable(
-                  columnSpacing: 14,
-                  horizontalMargin: 12,
+                child: CustomerTable(
+                  customers: customers,
                   sortColumnIndex: _sortColumnIndex,
                   sortAscending: _sortAscending,
-                  showCheckboxColumn: false,
-                  columns: [
-                    DataColumn(
-                      label: const Text('DATE ADDED'),
-                      onSort: _onSort,
-                    ),
-                    const DataColumn(label: Text('CUSTOMER')),
-                    const DataColumn(label: Text('ADDRESS')),
-                    const DataColumn(label: Text('CONTACT')),
-                    const DataColumn(label: Text('PACKAGE')),
-                    DataColumn(
-                      label: const Text('COST'),
-                      numeric: true,
-                      onSort: _onSort,
-                    ),
-                    DataColumn(
-                      label: const Text('PAID'),
-                      numeric: true,
-                      onSort: _onSort,
-                    ),
-                    DataColumn(
-                      label: const Text('BALANCE'),
-                      numeric: true,
-                      onSort: _onSort,
-                    ),
-                    DataColumn(label: const Text('STATUS'), onSort: _onSort),
-                    const DataColumn(label: Text('REMARKS')),
-                    DataColumn(label: const Text('DUE DATE'), onSort: _onSort),
-                    const DataColumn(label: Text('DAYS LEFT')),
-                  ],
-                  rows: [
-                    for (var index = 0; index < customers.length; index++)
-                      _buildRow(customers[index], index),
-                  ],
+                  onSort: _onSort,
+                  onRowTap: _openProfile,
                 ),
               ),
             ),
@@ -893,166 +860,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  DataRow _buildRow(Customer c, int index) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final palette = AppPalette.of(context);
-    final zebra = palette.surfaceAlt.withValues(alpha: 0.42);
-
-    return DataRow(
-      color: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.hovered)) {
-          return scheme.primary.withValues(alpha: 0.055);
-        }
-        return index.isEven ? null : zebra;
-      }),
-      onSelectChanged: (_) => _openProfile(c),
-      cells: [
-        DataCell(
-          Text(
-            _formatDate(c.dateAdded),
-            style: TextStyle(color: palette.muted, fontSize: 12),
-          ),
-        ),
-        DataCell(
-          InkWell(
-            onTap: () => _openProfile(c),
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-              child: Text(
-                c.name,
-                style: TextStyle(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ),
-        ),
-        DataCell(
-          SizedBox(
-            width: 170,
-            child: Text(
-              c.address,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: palette.muted, fontSize: 12),
-            ),
-          ),
-        ),
-        DataCell(
-          Text(
-            c.contactNumber,
-            style: TextStyle(color: palette.muted, fontSize: 12),
-          ),
-        ),
-        DataCell(
-          SizedBox(
-            width: 140,
-            child: Text(
-              c.package,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: scheme.onSurface.withValues(alpha: 0.85),
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-        DataCell(
-          Text(
-            '₱${_f(c.totalPackageCost)}',
-            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-          ),
-        ),
-        DataCell(
-          Text(
-            '₱${_f(c.amountPaid)}',
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-              color: c.amountPaid > 0 ? palette.success : palette.muted,
-            ),
-          ),
-        ),
-        DataCell(
-          Text(
-            '₱${_f(c.remainingBalance)}',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: c.remainingBalance > 0 ? palette.danger : palette.success,
-            ),
-          ),
-        ),
-        DataCell(
-          SizedBox(
-            width: 130,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: StatusBadge(status: c.paymentStatus),
-            ),
-          ),
-        ),
-        DataCell(
-          SizedBox(
-            width: 100,
-            child: Text(
-              c.remarks.isEmpty ? '\u2014' : c.remarks,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: palette.muted, fontSize: 12),
-            ),
-          ),
-        ),
-        DataCell(
-          Text(
-            _formatDate(c.dueDate),
-            style: TextStyle(color: palette.muted, fontSize: 12),
-          ),
-        ),
-        DataCell(_daysBadge(c.daysRemaining)),
-      ],
-    );
-  }
-
   void _openProfile(Customer c) {
     context.push('/customer/${c.id}');
   }
-
-  Widget _daysBadge(int days) {
-    final palette = AppPalette.of(context);
-    Color color;
-    String text;
-    if (days < 0) {
-      color = palette.danger;
-      text = '${days.abs()}d overdue';
-    } else if (days <= 7) {
-      color = palette.warning;
-      text = '$days days';
-    } else {
-      color = palette.success;
-      text = '$days days';
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  String _f(double v) => v.toStringAsFixed(2);
 
   String _formatDate(DateTime date) {
     final months = [

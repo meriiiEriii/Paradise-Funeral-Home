@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../models/customer.dart';
 import '../data/customer_store.dart';
 import '../theme/app_theme.dart';
+import '../widgets/customer_table.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/status_badge.dart';
 
 class SearchCustomerScreen extends StatefulWidget {
   final CustomerStore store;
@@ -19,12 +19,14 @@ class SearchCustomerScreen extends StatefulWidget {
 class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
   final _searchCtrl = TextEditingController();
   List<Customer> _results = [];
+  bool _sortAscending = true;
+  int? _sortColumnIndex;
 
   @override
   void initState() {
     super.initState();
     widget.store.addListener(_onStoreChanged);
-    // Every customer record — active, delayed, and completed — is listed
+    // Every customer record Ã¢â‚¬â€ active, delayed, and completed Ã¢â‚¬â€ is listed
     // right away, newest first.
     _results = widget.store.searchAllCustomers(_searchCtrl.text);
   }
@@ -32,6 +34,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
   void _onStoreChanged() {
     setState(() {
       _results = widget.store.searchAllCustomers(_searchCtrl.text);
+      _applySort(_results);
     });
   }
 
@@ -45,7 +48,54 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
   void _search(String query) {
     setState(() {
       _results = widget.store.searchAllCustomers(query);
+      _applySort(_results);
     });
+  }
+
+  void _applySort(List<Customer> customers) {
+    if (_sortColumnIndex == null) return;
+    final ascending = _sortAscending;
+    customers.sort((a, b) {
+      int result;
+      switch (_sortColumnIndex) {
+        case 0:
+          result = a.dateAdded.compareTo(b.dateAdded);
+          break;
+        case 1:
+          result = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          break;
+        case 5:
+          result = a.totalPackageCost.compareTo(b.totalPackageCost);
+          break;
+        case 6:
+          result = a.amountPaid.compareTo(b.amountPaid);
+          break;
+        case 7:
+          result = a.remainingBalance.compareTo(b.remainingBalance);
+          break;
+        case 8:
+          result = a.paymentStatus.index.compareTo(b.paymentStatus.index);
+          break;
+        case 10:
+          result = a.dueDate.compareTo(b.dueDate);
+          break;
+        default:
+          result = 0;
+      }
+      return ascending ? result : -result;
+    });
+  }
+
+  void _onSort(int columnIndex, bool ascending) {
+    setState(() {
+      _sortColumnIndex = columnIndex;
+      _sortAscending = ascending;
+      _applySort(_results);
+    });
+  }
+
+  void _openProfile(Customer customer) {
+    context.push('/customer/${customer.id}');
   }
 
   @override
@@ -119,7 +169,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Every customer record — active, delayed, or completed. Search by name, contact number, or customer ID.',
+                      'Every customer record Ã¢â‚¬â€ active, delayed, or completed. Search by name, contact number, or customer ID.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.82),
                         fontSize: 12,
@@ -172,305 +222,86 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
     final theme = Theme.of(context);
     final palette = AppPalette.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1120),
-              child: Row(
-                children: [
-                  Text(
-                    '${_results.length} result${_results.length != 1 ? 's' : ''}',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: palette.muted,
-                      letterSpacing: 0.6,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const Spacer(),
-                  Flexible(
-                    child: Text(
-                      'Tap a card to open the full profile',
-                      textAlign: TextAlign.right,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: palette.muted,
-                        letterSpacing: 0.1,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async => _search(_searchCtrl.text),
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              itemCount: _results.length,
-              itemBuilder: (context, index) {
-                return Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1120),
-                    child: _buildCustomerCard(_results[index]),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCustomerCard(Customer customer) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final palette = AppPalette.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => _openProfile(customer),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1240),
+        child: Card(
+          margin: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(13),
-                      border: Border.all(
-                        color: scheme.primary.withValues(alpha: 0.16),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.09,
+                        ),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Icon(
+                        Icons.table_rows_rounded,
+                        size: 17,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
-                    child: Center(
+                    const SizedBox(width: 10),
+                    Flexible(
                       child: Text(
-                        _initials(customer.name),
-                        style: TextStyle(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          letterSpacing: 0.5,
+                        'All Customers',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          customer.name,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14.5,
-                          ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: palette.surfaceAlt,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: palette.border),
+                      ),
+                      child: Text(
+                        '${_results.length}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: palette.muted,
+                          fontSize: 10.5,
                         ),
-                        const SizedBox(height: 1),
-                        Text(
-                          customer.id,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: palette.muted,
-                            fontSize: 10.5,
-                            letterSpacing: 0.6,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  StatusBadge(status: customer.paymentStatus),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 14),
               Divider(height: 1, color: palette.border),
-              const SizedBox(height: 12),
-              _detailRow(Icons.location_on_outlined, customer.address),
-              const SizedBox(height: 7),
-              _detailRow(Icons.phone_outlined, customer.contactNumber),
-              const SizedBox(height: 7),
-              _detailRow(Icons.inventory_2_outlined, customer.package),
-              const SizedBox(height: 14),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final tiles = [
-                    _moneyTile(
-                      'PACKAGE COST',
-                      customer.totalPackageCost,
-                      scheme.onSurface,
+              Expanded(
+                child: SingleChildScrollView(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: CustomerTable(
+                      customers: _results,
+                      sortColumnIndex: _sortColumnIndex,
+                      sortAscending: _sortAscending,
+                      onSort: _onSort,
+                      onRowTap: _openProfile,
                     ),
-                    _moneyTile(
-                      'AMOUNT PAID',
-                      customer.amountPaid,
-                      palette.success,
-                    ),
-                    _moneyTile(
-                      'BALANCE',
-                      customer.remainingBalance,
-                      customer.remainingBalance > 0
-                          ? palette.danger
-                          : palette.success,
-                    ),
-                  ];
-                  if (constraints.maxWidth < 360) {
-                    return Column(
-                      children: [
-                        for (var i = 0; i < tiles.length; i++) ...[
-                          if (i > 0) const SizedBox(height: 8),
-                          tiles[i],
-                        ],
-                      ],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      for (var i = 0; i < tiles.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 8),
-                        Expanded(child: tiles[i]),
-                      ],
-                    ],
-                  );
-                },
-              ),
-              if (customer.remarks.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: palette.surfaceAlt,
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: palette.border),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.notes_outlined,
-                        size: 14,
-                        color: palette.muted,
-                      ),
-                      const SizedBox(width: 7),
-                      Expanded(
-                        child: Text(
-                          customer.remarks,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: palette.muted,
-                            fontSize: 11.5,
-                            fontStyle: FontStyle.italic,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
-              ],
-              const SizedBox(height: 10),
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  AccountStatusBadge(status: customer.accountStatus),
-                  TextButton.icon(
-                    onPressed: () => _openProfile(customer),
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                    label: const Text('View Profile'),
-                  ),
-                ],
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Widget _detailRow(IconData icon, String text) {
-    final theme = Theme.of(context);
-    final palette = AppPalette.of(context);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 15, color: palette.muted),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: palette.muted,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _moneyTile(String label, double amount, Color color) {
-    final theme = Theme.of(context);
-    final palette = AppPalette.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: palette.surfaceAlt,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: palette.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: palette.muted,
-              fontSize: 9.5,
-              letterSpacing: 0.7,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '₱${amount.toStringAsFixed(2)}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 12.5,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openProfile(Customer customer) {
-    context.push('/customer/${customer.id}');
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
-        .toUpperCase();
   }
 }
