@@ -13,12 +13,14 @@ class PaymentScreen extends StatefulWidget {
   final Customer? customer;
   final CustomerStore store;
   final bool embedded;
+  final bool isAdmin;
 
   const PaymentScreen({
     super.key,
     this.customer,
     required this.store,
     this.embedded = false,
+    this.isAdmin = true,
   });
 
   @override
@@ -102,7 +104,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      await _store.recordPayment(_selectedCustomer!.id, amount);
+      final isFull = amount >= (_selectedCustomer!.remainingBalance);
+      if (widget.isAdmin) {
+        await _store.recordPayment(_selectedCustomer!.id, amount);
+      } else {
+        await _store.requestPayment(_selectedCustomer!.id, amount);
+      }
       final updated = _store.getCustomerById(_selectedCustomer!.id);
       if (!mounted) return;
       setState(() {
@@ -114,7 +121,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Payment of formatPeso(amount) recorded successfully!',
+            widget.isAdmin
+                ? 'Payment of ${formatPeso(amount)} recorded successfully!'
+                : 'Your ${isFull ? 'full' : 'partial'} payment of '
+                    '${formatPeso(amount)} was sent for admin approval.',
           ),
           backgroundColor: const Color(0xFF2E7D32),
         ),
@@ -421,7 +431,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     )
                   : const Icon(Icons.check_circle_outline_rounded, size: 19),
               label: Text(
-                c.remainingBalance <= 0 ? 'Fully Paid' : 'Record Payment',
+                c.remainingBalance <= 0
+                    ? 'Fully Paid'
+                    : widget.isAdmin
+                    ? 'Record Payment'
+                    : 'Send for Approval',
               ),
             ),
           ),

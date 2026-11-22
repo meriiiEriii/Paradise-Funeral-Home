@@ -263,10 +263,17 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         notification.type == AppNotificationType.paymentCompleted;
     final isCustomerAdded =
         notification.type == AppNotificationType.customerAdded;
+    final isPaymentRequested =
+        notification.type == AppNotificationType.paymentRequested;
+    final isPaymentDecision = notification.type ==
+            AppNotificationType.paymentApproved ||
+        notification.type == AppNotificationType.paymentRejected;
     final isDirectNav = isStaffRequest ||
         isDiscountRequest ||
         isPaymentCompleted ||
-        isCustomerAdded;
+        isCustomerAdded ||
+        isPaymentRequested ||
+        isPaymentDecision;
     final expanded = !isDirectNav && _expandedId == notification.id;
 
     return Card(
@@ -279,6 +286,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             : isPaymentCompleted
             ? () => _openPaid(notification)
             : isCustomerAdded
+            ? () => _openCustomer(notification)
+            : isPaymentRequested
+            ? () => _openApprovals(notification)
+            : isPaymentDecision
             ? () => _openCustomer(notification)
             : () => _toggle(notification),
         child: Padding(
@@ -442,6 +453,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         return _NotificationIcon(Icons.cancel_outlined, palette.danger);
       case AppNotificationType.paymentCompleted:
         return _NotificationIcon(Icons.task_alt_rounded, palette.success);
+      case AppNotificationType.paymentRequested:
+        return _NotificationIcon(Icons.payments_rounded, palette.warning);
+      case AppNotificationType.paymentApproved:
+        return _NotificationIcon(Icons.verified_outlined, palette.success);
+      case AppNotificationType.paymentRejected:
+        return _NotificationIcon(Icons.cancel_outlined, palette.danger);
       case AppNotificationType.staffRegistered:
         return _NotificationIcon(
           Icons.person_add_alt_1_rounded,

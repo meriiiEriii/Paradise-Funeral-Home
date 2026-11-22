@@ -233,7 +233,11 @@ class _CIPMSAppState extends State<CIPMSApp> {
               path: '/payment',
               pageBuilder: (context, state) => _shellPage(
                 state,
-                PaymentScreen(store: store, embedded: true),
+                PaymentScreen(
+                  store: store,
+                  embedded: true,
+                  isAdmin: session.user?.isAdmin ?? false,
+                ),
               ),
             ),
             GoRoute(
@@ -309,6 +313,7 @@ class _CIPMSAppState extends State<CIPMSApp> {
             canRecordPayment: session.user != null,
             canRequestDiscount: session.user != null && !session.user!.isAdmin,
             canShareQr: session.user != null,
+            isAdmin: session.user?.isAdmin ?? false,
           ),
         ),
         GoRoute(
@@ -345,6 +350,7 @@ class _CIPMSAppState extends State<CIPMSApp> {
             return PaymentScreen(
               store: store,
               customer: store.getCustomerById(id),
+              isAdmin: session.user?.isAdmin ?? false,
             );
           },
         ),

@@ -313,6 +313,36 @@ void main() {
       );
     });
 
+    test('staff payment request applies on admin approval', () async {
+      final store = CustomerStore();
+      await store.addCustomer(_customer(id: 'CUS-0001', cost: 1000, paid: 200));
+
+      // Staff submits a partial payment for approval.
+      await store.requestPayment('CUS-0001', 300);
+      expect(store.pendingPaymentRequests.length, 1);
+      expect(store.pendingPaymentRequests.first.kind, 'partial');
+      expect(store.getCustomerById('CUS-0001')!.amountPaid, 200);
+      // The admin is notified; the payment is not applied yet.
+      expect(
+        store.notifications.any(
+          (n) => n.type == AppNotificationType.paymentRequested,
+        ),
+        isTrue,
+      );
+
+      // Admin approves — the payment is applied.
+      await store.approvePaymentRequest(store.pendingPaymentRequests.first.id);
+      expect(store.getCustomerById('CUS-0001')!.amountPaid, 500);
+      expect(store.pendingPaymentRequests.length, 0);
+
+      // A full payment request settles the account into the Paid tab.
+      await store.requestPayment('CUS-0001', 500);
+      expect(store.pendingPaymentRequests.first.kind, 'full');
+      await store.approvePaymentRequest(store.pendingPaymentRequests.first.id);
+      expect(store.getCustomerById('CUS-0001')!.remainingBalance, 0);
+      expect(store.paidCustomers.length, 1);
+    });
+
     test('notifications can be marked read per user', () async {
       final store = CustomerStore();
       await store.addCustomer(_customer(id: 'CUS-0001', cost: 1000));

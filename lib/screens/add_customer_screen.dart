@@ -643,11 +643,12 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           const SizedBox(height: 4),
           Row(
             children: [
-              OutlinedButton.icon(
-                onPressed: _addItem,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add Item'),
-              ),
+              if (!_itemsReadOnly)
+                OutlinedButton.icon(
+                  onPressed: _addItem,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Add Item'),
+                ),
               const SizedBox(width: 8),
               const Spacer(),
               Flexible(
@@ -749,12 +750,17 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     );
   }
 
+  /// Staff using a pre-made package cannot edit its items — only admins can.
+  bool get _itemsReadOnly => !widget.isAdmin && _selectedTemplateId.isNotEmpty;
+
   Widget _buildItemRow(int index) {
     final item = _items[index];
     final palette = AppPalette.of(context);
+    final readOnly = _itemsReadOnly;
 
     final nameField = TextFormField(
       controller: item.nameCtrl,
+      enabled: !readOnly,
       textCapitalization: TextCapitalization.words,
       onChanged: (_) => _autoCapitalize(item.nameCtrl),
       decoration: const InputDecoration(
@@ -766,6 +772,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
     final amountField = TextFormField(
       controller: item.amountCtrl,
+      enabled: !readOnly,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: const InputDecoration(labelText: 'Amount', prefixText: '₱ '),
       onChanged: (_) => setState(() {}),
@@ -777,7 +784,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       },
     );
 
-    final removeButton = _items.length > 1
+    final removeButton = _items.length > 1 && !readOnly
         ? IconButton(
             tooltip: 'Remove item',
             icon: Icon(

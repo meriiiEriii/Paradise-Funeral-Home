@@ -12,6 +12,7 @@ import '../models/customer.dart';
 import '../models/discount_request.dart';
 import '../models/package_template.dart';
 import '../models/payment_entry.dart';
+import '../models/payment_request.dart';
 import '../models/staff_request.dart';
 import 'customer_repository.dart';
 
@@ -33,6 +34,9 @@ class FirestoreCustomerRepository implements CustomerRepository {
 
   CollectionReference<Map<String, dynamic>> get _notifications =>
       _firestore.collection('notifications');
+
+  CollectionReference<Map<String, dynamic>> get _paymentRequests =>
+      _firestore.collection('paymentRequests');
 
   CollectionReference<Map<String, dynamic>> get _packageTemplates =>
       _firestore.collection('packageTemplates');
@@ -265,12 +269,408 @@ class FirestoreCustomerRepository implements CustomerRepository {
               type: AppNotificationType.paymentCompleted,
               title: 'Account fully paid',
               message:
-                  '$customerName ($customerId) is now fully paid. The account has been moved to Completed.',
+                  '$customerName ($customerId) is now fully paid and is '
+                  'awaiting approval for the archive.',
               customerId: customerId,
               audienceRole: 'admin',
             ),
           );
         }
+      });
+    });
+  }
+
+  @override
+  Future<void> requestPayment(
+    String customerId,
+    double amount, {
+    String? note,
+  }) async {
+    final user = _requireUser();
+    final amountCentavos = (amount * 100).round();
+    if (amountCentavos <= 0) {
+      throw const CustomerRepositoryException(
+        'Payment must be greater than zero.',
+      );
+    }
+    final requestRef = _paymentRequests.doc();
+
+    await _run(() {
+      return _firestore.runTransaction((transaction) async {
+        final customerRef = _customerRef(customerId);
+        final snapshot = await transaction.get(customerRef);
+        if (!snapshot.exists) {
+          throw const CustomerRepositoryException('Customer not found.');
+        }
+        final data = snapshot.data()!;
+        final currentPaid =
+            (data['amountPaidCentavos'] as num?)?.toInt() ?? 0;
+        final totalDue =
+            (data['totalDueCentavos'] as num?)?.toInt() ??
+            ((data['packageTotalCentavos'] as num?)?.toInt() ?? 0) -
+                ((data['approvedDiscountCentavos'] as num?)?.toInt() ?? 0);
+        final remaining = totalDue - currentPaid;
+        if (remaining <= 0) {
+          throw const CustomerRepositoryException(
+            'This account is already fully paid.',
+          );
+        }
+        if (amountCentavos > remaining) {
+          throw const CustomerRepositoryException(
+            'Payment exceeds the remaining balance.',
+          );
+        }
+
+        final customerName = data['name'] as String? ?? customerId;
+        final kind = amountCentavos >= remaining ? 'full' : 'partial';
+        transaction.set(requestRef, {
+          'customerId': customerId,
+          'customerName': customerName,
+          'amountCentavos': amountCentavos,
+          'kind': kind,
+          'note': note ?? '',
+          'status': 'pending',
+          'requestedBy': {
+            'uid': user.uid,
+            'email': user.email ?? '',
+          },
+          'requestedAt': FieldValue.serverTimestamp(),
+        });
+        transaction.set(
+          _notifications.doc(),
+          _notificationData(
+            user: user,
+            type: AppNotificationType.paymentRequested,
+            title: 'New payment request',
+            message:
+                '$customerName ($customerId): ${kind == 'full' ? 'a full' : 'a partial'} '
+                'payment of ${formatPeso(amountCentavos / 100)} '
+                'is awaiting your approval.',
+            customerId: customerId,
+            requestId: requestRef.id,
+            audienceRole: 'admin',
+          ),
+        );
+      });
+    });
+  }
+
+  @override
+  Stream<List<PaymentRequest>> watchPaymentRequests() {
+    return _auth.authStateChanges().asyncExpand((user) {
+      if (user == null) return Stream.value(const <PaymentRequest>[]);
+      return Stream.fromFuture(_roleFor(user.uid)).asyncExpand((role) {
+        final query = role == 'admin'
+            ? _paymentRequests
+            : _paymentRequests.where('requestedBy.uid', isEqualTo: user.uid);
+        return query.snapshots().map((snapshot) {
+          final requests = snapshot.docs.map(_paymentRequestFromDocument).toList()
+            ..sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
+          return requests;
+        });
+      });
+    });
+  }
+
+  PaymentRequest _paymentRequestFromDocument(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    final requestedBy = data['requestedBy'] is Map
+        ? Map<String, dynamic>.from(data['requestedBy'] as Map)
+        : const <String, dynamic>{};
+    return PaymentRequest(
+      id: doc.id,
+      customerId: data['customerId'] as String? ?? '',
+      customerName: data['customerName'] as String? ?? '',
+      amountCentavos: (data['amountCentavos'] as num?)?.toInt() ?? 0,
+      kind: data['kind'] as String? ?? 'partial',
+      note: data['note'] as String? ?? '',
+      status: PaymentRequestStatusX.fromValue(data['status'] as String?),
+      requestedByUid: requestedBy['uid'] as String? ?? '',
+      requestedByEmail: requestedBy['email'] as String? ?? '',
+      requestedAt: _date(data['requestedAt']) ?? DateTime.now(),
+      reviewedByEmail:
+          (data['reviewedBy'] as Map?)?['email'] as String?,
+      reviewedAt: _date(data['reviewedAt']),
+    );
+  }
+
+  @override
+  Future<void> approvePaymentRequest(String requestId) async {
+    final user = _requireUser();
+    await _run(() {
+      return _firestore.runTransaction((transaction) async {
+        final requestRef = _paymentRequests.doc(requestId);
+        final requestSnapshot = await transaction.get(requestRef);
+        if (!requestSnapshot.exists) {
+          throw const CustomerRepositoryException('Payment request not found.');
+        }
+        final request = requestSnapshot.data()!;
+        if ((request['status'] as String?) != 'pending') {
+          throw const CustomerRepositoryException(
+            'This payment request has already been reviewed.',
+          );
+        }
+        final amountCentavos =
+            (request['amountCentavos'] as num?)?.toInt() ?? 0;
+        final customerId = request['customerId'] as String? ?? '';
+        final customerName = request['customerName'] as String? ?? customerId;
+        final customerRef = _customerRef(customerId);
+        final customerSnapshot = await transaction.get(customerRef);
+        if (!customerSnapshot.exists) {
+          throw const CustomerRepositoryException('Customer not found.');
+        }
+        final data = customerSnapshot.data()!;
+        final currentPaid =
+            (data['amountPaidCentavos'] as num?)?.toInt() ?? 0;
+        final totalDue =
+            (data['totalDueCentavos'] as num?)?.toInt() ??
+            ((data['packageTotalCentavos'] as num?)?.toInt() ?? 0) -
+                ((data['approvedDiscountCentavos'] as num?)?.toInt() ?? 0);
+        final remaining = totalDue - currentPaid;
+        if (remaining <= 0) {
+          throw const CustomerRepositoryException(
+            'This account is already fully paid. Reject the request instead.',
+          );
+        }
+        if (amountCentavos > remaining) {
+          throw const CustomerRepositoryException(
+            'The requested payment now exceeds the remaining balance. '
+            'Reject it instead.',
+          );
+        }
+
+        final balanceAfter = remaining - amountCentavos;
+        final paymentRef = customerRef.collection('payments').doc();
+        final completed = balanceAfter <= 0;
+        final requesterUid =
+            (request['requestedBy'] as Map?)?['uid'] as String?;
+
+        transaction.set(paymentRef, {
+          'customerId': customerId,
+          'amountCentavos': amountCentavos,
+          'balanceAfterCentavos': balanceAfter,
+          'note': request['note'] as String? ?? '',
+          'recordedBy': {
+            'uid': requesterUid ?? '',
+            'email':
+                (request['requestedBy'] as Map?)?['email'] as String? ?? '',
+          },
+          'recordedAt': FieldValue.serverTimestamp(),
+        });
+        transaction.update(customerRef, {
+          'amountPaidCentavos': currentPaid + amountCentavos,
+          'lastPaymentDate': FieldValue.serverTimestamp(),
+          'lastPaymentId': paymentRef.id,
+          'accountStatus': completed
+              ? 'paid'
+              : (data['accountStatus'] as String? ?? 'active'),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedBy': user.uid,
+        });
+        transaction.update(requestRef, {
+          'status': 'approved',
+          'reviewedBy': {'uid': user.uid, 'email': user.email ?? ''},
+          'reviewedAt': FieldValue.serverTimestamp(),
+        });
+        if (requesterUid != null && requesterUid.isNotEmpty) {
+          transaction.set(
+            _notifications.doc(),
+            _notificationData(
+              user: user,
+              type: AppNotificationType.paymentApproved,
+              title: 'Payment approved',
+              message:
+                  'Your ${request['kind'] == 'full' ? 'full' : 'partial'} '
+                  'payment of ${formatPeso(amountCentavos / 100)} '
+                  'for $customerName ($customerId) was approved.',
+              customerId: customerId,
+              requestId: requestId,
+              recipientUid: requesterUid,
+            ),
+          );
+        }
+      });
+    });
+  }
+
+  @override
+  Future<void> rejectPaymentRequest(String requestId) async {
+    final user = _requireUser();
+    await _run(() {
+      return _firestore.runTransaction((transaction) async {
+        final requestRef = _paymentRequests.doc(requestId);
+        final requestSnapshot = await transaction.get(requestRef);
+        if (!requestSnapshot.exists) {
+          throw const CustomerRepositoryException('Payment request not found.');
+        }
+        final request = requestSnapshot.data()!;
+        if ((request['status'] as String?) != 'pending') {
+          throw const CustomerRepositoryException(
+            'This payment request has already been reviewed.',
+          );
+        }
+        final customerId = request['customerId'] as String? ?? '';
+        final customerName = request['customerName'] as String? ?? customerId;
+        final requesterUid =
+            (request['requestedBy'] as Map?)?['uid'] as String?;
+
+        transaction.update(requestRef, {
+          'status': 'rejected',
+          'reviewedBy': {'uid': user.uid, 'email': user.email ?? ''},
+          'reviewedAt': FieldValue.serverTimestamp(),
+        });
+        if (requesterUid != null && requesterUid.isNotEmpty) {
+          transaction.set(
+            _notifications.doc(),
+            _notificationData(
+              user: user,
+              type: AppNotificationType.paymentRejected,
+              title: 'Payment request rejected',
+              message:
+                  'Your ${request['kind'] == 'full' ? 'full' : 'partial'} '
+                  'payment of ${formatPeso(((request['amountCentavos'] as num?)?.toInt() ?? 0) / 100)} '
+                  'for $customerName ($customerId) was rejected.',
+              customerId: customerId,
+              requestId: requestId,
+              recipientUid: requesterUid,
+            ),
+          );
+        }
+      });
+    });
+  }
+
+  /// Admin corrections: edit a recorded payment's amount or delete it.
+  /// Customer totals and every payment's running balance are recomputed.
+  Future<void> _recomputePayments(
+    Transaction transaction,
+    Map<String, dynamic> customerData,
+    DocumentReference<Map<String, dynamic>> customerRef,
+    String customerId, {
+    String? editedPaymentId,
+    int? editedAmountCentavos,
+    String? deletedPaymentId,
+  }) async {
+    final paymentsSnapshot =
+        await _customerRef(customerId).collection('payments').get();
+    final entries = paymentsSnapshot.docs
+        .where((doc) => doc.id != deletedPaymentId)
+        .map((doc) {
+          final data = doc.data();
+          final recordedAt = data['recordedAt'];
+          return {
+            'ref': doc.reference,
+            'id': doc.id,
+            'amountCentavos': (data['amountCentavos'] as num?)?.toInt() ?? 0,
+            'recordedAt': recordedAt is Timestamp ? recordedAt.toDate() : null,
+          };
+        })
+        .toList()
+      ..sort((a, b) {
+        final aDate = a['recordedAt'] as DateTime?;
+        final bDate = b['recordedAt'] as DateTime?;
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return aDate.compareTo(bDate);
+      });
+
+    var totalPaid = 0;
+    for (final entry in entries) {
+      if (entry['id'] == editedPaymentId) {
+        totalPaid += editedAmountCentavos ?? 0;
+      } else {
+        totalPaid += entry['amountCentavos'] as int;
+      }
+      transaction.update(
+        entry['ref'] as DocumentReference<Map<String, dynamic>>,
+        {'balanceAfterCentavos': totalPaid},
+      );
+    }
+
+    final totalDue =
+        (customerData['totalDueCentavos'] as num?)?.toInt() ??
+        ((customerData['packageTotalCentavos'] as num?)?.toInt() ?? 0) -
+            ((customerData['approvedDiscountCentavos'] as num?)?.toInt() ?? 0);
+    final fullyPaid = totalPaid >= totalDue;
+    final currentStatus = customerData['accountStatus'] as String? ?? 'active';
+    transaction.update(customerRef, {
+      'amountPaidCentavos': totalPaid,
+      'lastPaymentDate': FieldValue.serverTimestamp(),
+      'accountStatus': fullyPaid
+          ? (currentStatus == 'completed' ? 'completed' : 'paid')
+          : (currentStatus == 'paid' ? 'active' : currentStatus),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<void> updatePayment(
+    String customerId,
+    String paymentId,
+    double newAmount,
+  ) async {
+    final user = _requireUser();
+    final amountCentavos = (newAmount * 100).round();
+    if (amountCentavos <= 0) {
+      throw const CustomerRepositoryException(
+        'Payment must be greater than zero.',
+      );
+    }
+
+    await _run(() {
+      return _firestore.runTransaction((transaction) async {
+        final customerRef = _customerRef(customerId);
+        final snapshot = await transaction.get(customerRef);
+        if (!snapshot.exists) {
+          throw const CustomerRepositoryException('Customer not found.');
+        }
+        final paymentRef = _customerRef(customerId)
+            .collection('payments')
+            .doc(paymentId);
+        final paymentSnapshot = await transaction.get(paymentRef);
+        if (!paymentSnapshot.exists) {
+          throw const CustomerRepositoryException('Payment not found.');
+        }
+        transaction.update(paymentRef, {
+          'amountCentavos': amountCentavos,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedBy': user.uid,
+        });
+        await _recomputePayments(
+          transaction,
+          snapshot.data()!,
+          customerRef,
+          customerId,
+          editedPaymentId: paymentId,
+          editedAmountCentavos: amountCentavos,
+        );
+      });
+    });
+  }
+
+  @override
+  Future<void> deletePayment(String customerId, String paymentId) async {
+    _requireUser();
+    await _run(() {
+      return _firestore.runTransaction((transaction) async {
+        final customerRef = _customerRef(customerId);
+        final snapshot = await transaction.get(customerRef);
+        if (!snapshot.exists) {
+          throw const CustomerRepositoryException('Customer not found.');
+        }
+        transaction.delete(
+          _customerRef(customerId).collection('payments').doc(paymentId),
+        );
+        await _recomputePayments(
+          transaction,
+          snapshot.data()!,
+          customerRef,
+          customerId,
+          deletedPaymentId: paymentId,
+        );
       });
     });
   }

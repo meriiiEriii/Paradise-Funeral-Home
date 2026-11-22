@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../data/customer_store.dart';
 import '../models/discount_request.dart';
+import '../models/payment_request.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/page_header.dart';
@@ -25,7 +26,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
+    _tabs = TabController(length: 3, vsync: this);
     widget.store.addListener(_onStoreChanged);
   }
 
@@ -153,6 +154,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
     final palette = AppPalette.of(context);
     final requests = widget.store.pendingDiscountRequests;
     final history = _history;
+    final paymentRequests = widget.store.pendingPaymentRequests;
 
     return Column(
       children: [
@@ -166,9 +168,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
                 children: [
                   const PageHeader(
                     icon: Icons.approval_outlined,
-                    title: 'Discount Approvals',
+                    title: 'Approvals',
                     subtitle:
-                        'Review discount requests from staff before they are applied to an account.',
+                        'Review discount requests and staff payments before they are applied.',
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -190,6 +192,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
                       dividerColor: Colors.transparent,
                       tabs: [
                         Tab(text: 'Requests (${requests.length})'),
+                        Tab(text: 'Payment Approvals (${paymentRequests.length})'),
                         Tab(text: 'Discount History (${history.length})'),
                       ],
                     ),
@@ -204,6 +207,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
             controller: _tabs,
             children: [
               _buildRequests(requests),
+              _buildPaymentRequests(paymentRequests),
               _buildHistory(history),
             ],
           ),
@@ -246,6 +250,242 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
     );
   }
 
+  /// 'Full payment' when the request covers the whole balance; otherwise
+  /// 'Partial payment'.
+  String _paymentKindLabel(PaymentRequest request) {
+    return request.kind == 'full' ? 'Full payment' : 'Partial payment';
+  }
+
+  Future<void> _approvePayment(PaymentRequest request) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.payments_rounded, size: 26),
+        title: const Text('Approve payment'),
+        content: Text(
+          'Record a ${_paymentKindLabel(request).toLowerCase()} of '
+          '${formatPeso(request.amount)} for ${request.customerName} '
+          '(${request.customerId})?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Approve'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _run(() => widget.store.approvePaymentRequest(request.id));
+  }
+
+  Future<void> _rejectPayment(PaymentRequest request) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.cancel_outlined, size: 26),
+        title: const Text('Reject payment'),
+        content: Text(
+          'Reject the ${_paymentKindLabel(request).toLowerCase()} of '
+          '${formatPeso(request.amount)} for ${request.customerName}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _run(() => widget.store.rejectPaymentRequest(request.id));
+  }
+
+  Widget _buildPaymentRequests(List<PaymentRequest> requests) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 960),
+        child: requests.isEmpty
+            ? ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  Card(
+                    child: EmptyState(
+                      icon: Icons.payments_rounded,
+                      title: 'No payment requests',
+                      message:
+                          'When staff record a payment, it will appear here '
+                          'for your approval before it is applied.',
+                    ),
+                  ),
+                ],
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.all(20),
+                itemCount: requests.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 14),
+                itemBuilder: (context, index) =>
+                    _buildPaymentRequestCard(requests[index]),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentRequestCard(PaymentRequest request) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.payments_rounded,
+                    size: 20,
+                    color: scheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.customerName.isEmpty
+                            ? request.customerId
+                            : request.customerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        request.customerId,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: palette.muted,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.brandSoft,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: scheme.primary.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Text(
+                    _paymentKindLabel(request),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              formatPeso(request.amount),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontFamily: 'Lora',
+                fontWeight: FontWeight.w700,
+                color: scheme.primary,
+              ),
+            ),
+            if (request.note.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                request.note,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: palette.muted,
+                  height: 1.4,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 14, color: palette.muted),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    request.requestedByEmail.isEmpty
+                        ? 'Requested by staff'
+                        : 'Requested by ${request.requestedByEmail}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: palette.muted,
+                    ),
+                  ),
+                ),
+                Text(
+                  _formatDateTime(request.requestedAt),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: palette.muted,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _rejectPayment(request),
+                  icon: const Icon(Icons.close_rounded, size: 17),
+                  label: const Text('Reject'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: palette.danger,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton.icon(
+                  onPressed: _busy ? null : () => _approvePayment(request),
+                  icon: const Icon(Icons.check_rounded, size: 17),
+                  label: const Text('Approve'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   Widget _buildHistory(List<DiscountRequest> history) {
     return Center(
       child: ConstrainedBox(

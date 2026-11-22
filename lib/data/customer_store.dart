@@ -9,6 +9,7 @@ import '../models/customer.dart';
 import '../models/discount_request.dart';
 import '../models/package_template.dart';
 import '../models/payment_entry.dart';
+import '../models/payment_request.dart';
 import '../models/staff_request.dart';
 import 'customer_repository.dart';
 
@@ -20,6 +21,7 @@ class CustomerStore extends ChangeNotifier {
   final List<StaffRequest> _staffRequests = [];
   final List<StaffRequest> _staffList = [];
   final List<PackageTemplate> _packageTemplates = [];
+  final List<PaymentRequest> _paymentRequests = [];
   final Map<String, List<PaymentEntry>> _localPayments = {};
   StreamSubscription<List<Customer>>? _subscription;
   StreamSubscription<List<DiscountRequest>>? _requestSubscription;
@@ -27,6 +29,7 @@ class CustomerStore extends ChangeNotifier {
   StreamSubscription<List<StaffRequest>>? _staffRequestSubscription;
   StreamSubscription<List<StaffRequest>>? _staffListSubscription;
   StreamSubscription<List<PackageTemplate>>? _packageTemplateSubscription;
+  StreamSubscription<List<PaymentRequest>>? _paymentRequestSubscription;
   Completer<void>? _firstLoad;
   bool _isLoading = false;
   String? _error;
@@ -262,6 +265,17 @@ class CustomerStore extends ChangeNotifier {
       cancelOnError: false,
     );
 
+    _paymentRequestSubscription = _repository.watchPaymentRequests().listen(
+      (requests) {
+        _paymentRequests
+          ..clear()
+          ..addAll(requests);
+        notifyListeners();
+      },
+      onError: (Object error, StackTrace stackTrace) {},
+      cancelOnError: false,
+    );
+
     await _firstLoad!.future.timeout(
       const Duration(seconds: 10),
       onTimeout: () {
@@ -310,12 +324,14 @@ class CustomerStore extends ChangeNotifier {
     await _staffRequestSubscription?.cancel();
     await _staffListSubscription?.cancel();
     await _packageTemplateSubscription?.cancel();
+    await _paymentRequestSubscription?.cancel();
     _subscription = null;
     _requestSubscription = null;
     _notificationSubscription = null;
     _staffRequestSubscription = null;
     _staffListSubscription = null;
     _packageTemplateSubscription = null;
+    _paymentRequestSubscription = null;
     _firstLoad = null;
     await initialize();
   }
@@ -787,6 +803,248 @@ class CustomerStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  List<PaymentRequest> get paymentRequests =>
+      List.unmodifiable(_paymentRequests);
+
+  List<PaymentRequest> get pendingPaymentRequests =>
+      _paymentRequests.where((request) => request.isPending).toList();
+
+  /// Staff submits a payment for admin approval. Admins record payments
+  /// immediately instead.
+  Future<void> requestPayment(
+    String customerId,
+    double amount, {
+    String? note,
+  }) async {
+    if (_repository != null) {
+      await _repository.requestPayment(customerId, amount, note: note);
+      return;
+    }
+    final customer = getCustomerById(customerId);
+    if (customer == null) {
+      throw const CustomerRepositoryException('Customer not found.');
+    }
+    if (amount <= 0) {
+      throw const CustomerRepositoryException(
+        'Payment must be greater than zero.',
+      );
+    }
+    if (amount > customer.remainingBalance) {
+      throw const CustomerRepositoryException(
+        'Payment exceeds the remaining balance.',
+      );
+    }
+    final kind = amount >= customer.remainingBalance ? 'full' : 'partial';
+    _paymentRequests.insert(
+      0,
+      PaymentRequest(
+        id: 'PR-${_paymentRequests.length + 1}',
+        customerId: customerId,
+        customerName: customer.name,
+        amountCentavos: (amount * 100).round(),
+        kind: kind,
+        note: note ?? '',
+        requestedByUid: 'local-user',
+        requestedAt: DateTime.now(),
+      ),
+    );
+    _notifications.insert(
+      0,
+      AppNotification(
+        id: _nextNotificationId(),
+        type: AppNotificationType.paymentRequested,
+        title: 'New payment request',
+        message:
+            '${customer.name} ($customerId): a ${kind == 'full' ? 'full' : 'partial'} '
+            'payment of ₱${amount.toStringAsFixed(2)} is awaiting your approval.',
+        audienceRole: 'admin',
+        customerId: customerId,
+        createdAt: DateTime.now(),
+        createdByUid: 'local-user',
+      ),
+    );
+    notifyListeners();
+  }
+
+  Future<void> approvePaymentRequest(String requestId) async {
+    if (_repository != null) {
+      await _repository.approvePaymentRequest(requestId);
+      return;
+    }
+    final index = _paymentRequests.indexWhere((r) => r.id == requestId);
+    if (index == -1) {
+      throw const CustomerRepositoryException('Payment request not found.');
+    }
+    final request = _paymentRequests[index];
+    if (!request.isPending) {
+      throw const CustomerRepositoryException(
+        'This payment request has already been reviewed.',
+      );
+    }
+    final customer = getCustomerById(request.customerId);
+    if (customer == null) {
+      throw const CustomerRepositoryException('Customer not found.');
+    }
+    if (request.amountCentavos / 100 > customer.remainingBalance) {
+      throw const CustomerRepositoryException(
+        'The requested payment now exceeds the remaining balance. '
+        'Reject it instead.',
+      );
+    }
+    _paymentRequests[index] = request.copyWith(
+      status: PaymentRequestStatus.approved,
+      reviewedByEmail: 'admin',
+      reviewedAt: DateTime.now(),
+    );
+    await recordPayment(customer.id, request.amount);
+    _notifications.insert(
+      0,
+      AppNotification(
+        id: _nextNotificationId(),
+        type: AppNotificationType.paymentApproved,
+        title: 'Payment approved',
+        message:
+            'Your ${request.kind == 'full' ? 'full' : 'partial'} payment of '
+            '₱${request.amount.toStringAsFixed(2)} for ${customer.name} '
+            '(${customer.id}) was approved.',
+        recipientUid: request.requestedByUid,
+        customerId: customer.id,
+        createdAt: DateTime.now(),
+        createdByUid: 'admin',
+      ),
+    );
+    notifyListeners();
+  }
+
+  Future<void> rejectPaymentRequest(String requestId) async {
+    if (_repository != null) {
+      await _repository.rejectPaymentRequest(requestId);
+      return;
+    }
+    final index = _paymentRequests.indexWhere((r) => r.id == requestId);
+    if (index == -1) {
+      throw const CustomerRepositoryException('Payment request not found.');
+    }
+    final request = _paymentRequests[index];
+    if (!request.isPending) {
+      throw const CustomerRepositoryException(
+        'This payment request has already been reviewed.',
+      );
+    }
+    _paymentRequests[index] = request.copyWith(
+      status: PaymentRequestStatus.rejected,
+      reviewedByEmail: 'admin',
+      reviewedAt: DateTime.now(),
+    );
+    _notifications.insert(
+      0,
+      AppNotification(
+        id: _nextNotificationId(),
+        type: AppNotificationType.paymentRejected,
+        title: 'Payment request rejected',
+        message:
+            'Your ${request.kind == 'full' ? 'full' : 'partial'} payment of '
+            '₱${request.amount.toStringAsFixed(2)} for '
+            '${request.customerName} (${request.customerId}) was rejected.',
+        recipientUid: request.requestedByUid,
+        customerId: request.customerId,
+        createdAt: DateTime.now(),
+        createdByUid: 'admin',
+      ),
+    );
+    notifyListeners();
+  }
+
+  /// Admin correction: edit a recorded payment's amount.
+  Future<void> updatePayment(
+    String customerId,
+    String paymentId,
+    double newAmount,
+  ) async {
+    if (_repository != null) {
+      await _repository.updatePayment(customerId, paymentId, newAmount);
+      return;
+    }
+    if (newAmount <= 0) {
+      throw const CustomerRepositoryException(
+        'Payment must be greater than zero.',
+      );
+    }
+    final payments = [...?_localPayments[customerId]];
+    final index = payments.indexWhere((p) => p.id == paymentId);
+    if (index == -1) {
+      throw const CustomerRepositoryException('Payment not found.');
+    }
+    payments[index] = PaymentEntry(
+      id: payments[index].id,
+      amountCentavos: (newAmount * 100).round(),
+      balanceAfterCentavos: 0,
+      recordedAt: payments[index].recordedAt,
+      note: payments[index].note,
+      recordedByEmail: payments[index].recordedByEmail,
+    );
+    var running = 0.0;
+    for (var i = payments.length - 1; i >= 0; i--) {
+      running += payments[i].amount;
+      payments[i] = PaymentEntry(
+        id: payments[i].id,
+        amountCentavos: payments[i].amountCentavos,
+        balanceAfterCentavos: (running * 100).round(),
+        recordedAt: payments[i].recordedAt,
+        note: payments[i].note,
+        recordedByEmail: payments[i].recordedByEmail,
+      );
+    }
+    _localPayments[customerId] = payments;
+    await _recalculateCustomerFromPayments(customerId);
+  }
+
+  /// Admin correction: delete a recorded payment.
+  Future<void> deletePayment(String customerId, String paymentId) async {
+    if (_repository != null) {
+      await _repository.deletePayment(customerId, paymentId);
+      return;
+    }
+    final payments = [...?_localPayments[customerId]]
+      ..removeWhere((p) => p.id == paymentId);
+    var running = 0.0;
+    for (var i = payments.length - 1; i >= 0; i--) {
+      running += payments[i].amount;
+      payments[i] = PaymentEntry(
+        id: payments[i].id,
+        amountCentavos: payments[i].amountCentavos,
+        balanceAfterCentavos: (running * 100).round(),
+        recordedAt: payments[i].recordedAt,
+        note: payments[i].note,
+        recordedByEmail: payments[i].recordedByEmail,
+      );
+    }
+    _localPayments[customerId] = payments;
+    await _recalculateCustomerFromPayments(customerId);
+  }
+
+  Future<void> _recalculateCustomerFromPayments(String customerId) async {
+    final index = _customers.indexWhere((c) => c.id == customerId);
+    if (index == -1) return;
+    final customer = _customers[index];
+    final totalPaid =
+        (_localPayments[customerId] ?? const <PaymentEntry>[])
+            .fold(0.0, (sum, p) => sum + p.amount);
+    final updated = customer.copyWith(amountPaid: totalPaid);
+    _customers[index] = updated.remainingBalance <= 0
+        ? updated.copyWith(
+            accountStatus: customer.accountStatus == AccountStatus.completed
+                ? AccountStatus.completed
+                : AccountStatus.paid,
+          )
+        : updated.copyWith(
+            accountStatus: customer.accountStatus == AccountStatus.paid
+                ? AccountStatus.active
+                : customer.accountStatus,
+          );
+    notifyListeners();
+  }
+
   /// Publishes (or refreshes) the public, view-only receipt page that the
   /// customer's QR code links to.
   Future<void> publishCustomerView(String customerId) async {
@@ -896,6 +1154,7 @@ class CustomerStore extends ChangeNotifier {
     _staffRequestSubscription?.cancel();
     _staffListSubscription?.cancel();
     _packageTemplateSubscription?.cancel();
+    _paymentRequestSubscription?.cancel();
     super.dispose();
   }
 }

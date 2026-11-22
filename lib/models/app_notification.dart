@@ -5,6 +5,9 @@ enum AppNotificationType {
   discountApproved,
   discountRejected,
   paymentCompleted,
+  paymentRequested,
+  paymentApproved,
+  paymentRejected,
   staffRegistered,
   customerAdded,
 }

@@ -1,10 +1,11 @@
-import '../utils/formatters.dart';
+import '../utils/formatters.dart' show formatPeso;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/customer_store.dart';
 import '../models/customer.dart';
 import '../models/discount_request.dart';
+import '../models/payment_entry.dart';
 import '../theme/app_theme.dart';
 import '../widgets/customer_qr_dialog.dart';
 import '../widgets/empty_state.dart';
@@ -18,6 +19,7 @@ class CustomerProfileScreen extends StatefulWidget {
   final bool canRecordPayment;
   final bool canRequestDiscount;
   final bool canShareQr;
+  final bool isAdmin;
 
   const CustomerProfileScreen({
     super.key,
@@ -26,6 +28,7 @@ class CustomerProfileScreen extends StatefulWidget {
     this.canRecordPayment = false,
     this.canRequestDiscount = false,
     this.canShareQr = false,
+    this.isAdmin = false,
   });
 
   @override
@@ -97,6 +100,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     final right = Column(
                       children: [
                         _buildPaymentCard(context),
+                        const SizedBox(height: 16),
+                        _buildPaymentHistory(context),
                         const SizedBox(height: 16),
                         _buildRemarksCard(context),
                         if (customer.remarks.isNotEmpty)
@@ -576,6 +581,279 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildPaymentHistory(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.history_rounded, size: 17, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Payment history',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (widget.isAdmin)
+                  Text(
+                    'Admin can edit',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: palette.muted,
+                      fontSize: 10,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            StreamBuilder<List<PaymentEntry>>(
+              stream: widget.store.watchPayments(customer.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                }
+                final payments = snapshot.data ?? const <PaymentEntry>[];
+                if (payments.isEmpty) {
+                  return Text(
+                    'No payments recorded yet.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: palette.muted,
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    for (final payment in payments)
+                      _paymentRow(context, payment),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentRow(BuildContext context, PaymentEntry payment) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: palette.success.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(
+              Icons.payments_rounded,
+              size: 15,
+              color: palette.success,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  formatPeso(payment.amount),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  [
+                    if (payment.recordedAt != null)
+                      _formatDateTime(payment.recordedAt!),
+                    if (payment.note.isNotEmpty) payment.note,
+                    if (payment.recordedByEmail.isNotEmpty)
+                      'by ${payment.recordedByEmail}',
+                  ].join(' · '),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: palette.muted,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Balance after',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: palette.muted,
+                  fontSize: 9.5,
+                ),
+              ),
+              Text(
+                formatPeso(payment.balanceAfter),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          if (widget.isAdmin) ...[
+            IconButton(
+              tooltip: 'Edit payment',
+              icon: Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+              onPressed: () => _editPayment(payment),
+            ),
+            IconButton(
+              tooltip: 'Delete payment',
+              icon: Icon(Icons.delete_outline_rounded, size: 18, color: palette.danger),
+              onPressed: () => _deletePayment(payment),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editPayment(PaymentEntry payment) async {
+    final controller = TextEditingController(
+      text: payment.amount.toStringAsFixed(2),
+    );
+    final newAmount = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(
+          Icons.edit_rounded,
+          color: Theme.of(context).colorScheme.primary,
+          size: 26,
+        ),
+        title: const Text('Edit payment'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Payment amount',
+            prefixText: '₱ ',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.of(context).pop(double.tryParse(controller.text)),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (newAmount == null || newAmount <= 0 || !mounted) return;
+    try {
+      await widget.store.updatePayment(
+        customer.id,
+        payment.id,
+        newAmount,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment updated.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  Future<void> _deletePayment(PaymentEntry payment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(
+          Icons.delete_outline_rounded,
+          color: Theme.of(context).colorScheme.error,
+          size: 26,
+        ),
+        title: const Text('Delete payment'),
+        content: Text(
+          'Delete the payment of ${formatPeso(payment.amount)}? Totals and '
+          'balances will be recalculated.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.store.deletePayment(customer.id, payment.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment deleted.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  String _formatDateTime(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    return '${months[date.month - 1]} ${date.day}, ${date.year} '
+        '$hour:$minute $period';
   }
 
   Widget _buildRemarksCard(BuildContext context) {

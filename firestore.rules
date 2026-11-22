@@ -45,6 +45,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/discountRequests/$(requestId);
     }
 
+    function paymentRequestPath(requestId) {
+      return /databases/$(database)/documents/paymentRequests/$(requestId);
+    }
+
     function userPath(userId) {
       return /databases/$(database)/documents/users/$(userId);
     }
@@ -221,9 +225,58 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/customers/$(customerId)).data.amountPaidCentavos == get(/databases/$(database)/documents/customers/$(customerId)).data.amountPaidCentavos + request.resource.data.amountCentavos
           && getAfter(/databases/$(database)/documents/customers/$(customerId)).data.totalDueCentavos - getAfter(/databases/$(database)/documents/customers/$(customerId)).data.amountPaidCentavos == request.resource.data.balanceAfterCentavos;
 
-        allow update: if false;
+        allow update: if isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasAny(['amountCentavos', 'balanceAfterCentavos', 'updatedAt', 'updatedBy'])
+          && request.resource.data.amountCentavos is int
+          && request.resource.data.amountCentavos > 0
+          && request.resource.data.updatedBy == request.auth.uid;
         allow delete: if isAdmin();
       }
+    }
+
+    // Staff payment requests awaiting admin approval.
+    match /paymentRequests/{requestId} {
+      allow read: if (isAdmin() || isStaff())
+        && (isAdmin() || resource.data.requestedBy.uid == request.auth.uid);
+
+      allow create: if isStaff()
+        && request.resource.data.keys().hasOnly([
+          'customerId',
+          'customerName',
+          'amountCentavos',
+          'kind',
+          'note',
+          'status',
+          'requestedBy',
+          'requestedAt',
+        ])
+        && request.resource.data.customerId is string
+        && request.resource.data.customerName is string
+        && request.resource.data.amountCentavos is int
+        && request.resource.data.amountCentavos > 0
+        && request.resource.data.kind in ['partial', 'full']
+        && request.resource.data.note is string
+        && request.resource.data.status == 'pending'
+        && request.resource.data.requestedBy.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.requestedBy.uid == request.auth.uid
+        && request.resource.data.requestedAt is timestamp
+        && exists(customerPath(request.resource.data.customerId))
+        && get(customerPath(request.resource.data.customerId)).data.amountPaidCentavos < get(customerPath(request.resource.data.customerId)).data.totalDueCentavos
+        && request.resource.data.amountCentavos <= get(customerPath(request.resource.data.customerId)).data.totalDueCentavos - get(customerPath(request.resource.data.customerId)).data.amountPaidCentavos;
+
+      allow update: if isAdmin()
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'reviewedBy',
+          'reviewedAt',
+        ])
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.reviewedBy.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.reviewedBy.uid == request.auth.uid
+        && request.resource.data.reviewedAt is timestamp;
+
+      allow delete: if false;
     }
 
     match /discountRequests/{requestId} {
@@ -327,6 +380,9 @@ service cloud.firestore {
           'discountApproved',
           'discountRejected',
           'paymentCompleted',
+          'paymentRequested',
+          'paymentApproved',
+          'paymentRejected',
           'staffRegistered',
           'customerAdded',
         ]
@@ -366,6 +422,14 @@ service cloud.firestore {
             request.resource.data.type == 'customerAdded'
             && request.resource.data.audienceRole in ['staff', 'admin']
             && exists(customerPath(request.resource.data.customerId))
+          ) || (
+            request.resource.data.type == 'paymentRequested'
+            && request.resource.data.audienceRole == 'admin'
+            && exists(customerPath(request.resource.data.customerId))
+          ) || (
+            request.resource.data.type in ['paymentApproved', 'paymentRejected']
+            && isAdmin()
+            && request.resource.data.recipientUid == getAfter(paymentRequestPath(request.resource.data.requestId)).data.requestedBy.uid
           )
         );
 

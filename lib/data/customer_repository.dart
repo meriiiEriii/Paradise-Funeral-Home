@@ -4,6 +4,7 @@ import '../models/customer.dart';
 import '../models/discount_request.dart';
 import '../models/package_template.dart';
 import '../models/payment_entry.dart';
+import '../models/payment_request.dart';
 import '../models/staff_request.dart';
 
 class CustomerRepositoryException implements Exception {
@@ -25,6 +26,29 @@ abstract class CustomerRepository {
   Future<void> deleteCustomer(String customerId);
 
   Future<void> recordPayment(String customerId, double amount, {String? note});
+
+  /// Staff-submitted payment awaiting admin approval.
+  Future<void> requestPayment(
+    String customerId,
+    double amount, {
+    String? note,
+  });
+
+  Stream<List<PaymentRequest>> watchPaymentRequests();
+
+  Future<void> approvePaymentRequest(String requestId);
+
+  Future<void> rejectPaymentRequest(String requestId);
+
+  /// Admin corrections: edit a recorded payment's amount or delete it.
+  /// Customer totals and payment balances are recomputed automatically.
+  Future<void> updatePayment(
+    String customerId,
+    String paymentId,
+    double newAmount,
+  );
+
+  Future<void> deletePayment(String customerId, String paymentId);
 
   Future<void> restoreToActive(Customer customer);
 

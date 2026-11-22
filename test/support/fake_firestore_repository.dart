@@ -7,6 +7,7 @@ import 'package:inventory/models/customer.dart';
 import 'package:inventory/models/discount_request.dart';
 import 'package:inventory/models/package_template.dart';
 import 'package:inventory/models/payment_entry.dart';
+import 'package:inventory/models/payment_request.dart';
 import 'package:inventory/models/staff_request.dart';
 
 /// Mimics FirestoreCustomerRepository behaviour: writes do not mutate local
@@ -18,6 +19,7 @@ class FakeFirestoreRepository implements CustomerRepository {
   final List<StaffRequest> staffRequests = [];
   final List<StaffRequest> staffList = [];
   final List<PackageTemplate> packageTemplates = [];
+  final List<PaymentRequest> paymentRequests = [];
 
   final _customersController = StreamController<List<Customer>>.broadcast();
   final _requestsController =
@@ -27,6 +29,8 @@ class FakeFirestoreRepository implements CustomerRepository {
   final _staffRequestsController =
       StreamController<List<StaffRequest>>.broadcast();
   final _staffListController = StreamController<List<StaffRequest>>.broadcast();
+  final _paymentRequestsController =
+      StreamController<List<PaymentRequest>>.broadcast();
   final _packageTemplatesController =
       StreamController<List<PackageTemplate>>.broadcast();
 
@@ -51,6 +55,7 @@ class FakeFirestoreRepository implements CustomerRepository {
     _staffRequestsController.close();
     _staffListController.close();
     _packageTemplatesController.close();
+    _paymentRequestsController.close();
   }
 
   @override
@@ -86,6 +91,90 @@ class FakeFirestoreRepository implements CustomerRepository {
     double amount, {
     String? note,
   }) async {}
+
+  @override
+  Future<void> requestPayment(
+    String customerId,
+    double amount, {
+    String? note,
+  }) async {
+    final request = PaymentRequest(
+      id: nextId('PR-'),
+      customerId: customerId,
+      customerName: customers
+          .where((c) => c.id == customerId)
+          .map((c) => c.name)
+          .first,
+      amountCentavos: (amount * 100).round(),
+      kind: 'partial',
+      note: note ?? '',
+      requestedByUid: 'staff-uid',
+      requestedByEmail: 'staff@cipms.test',
+      requestedAt: DateTime.now(),
+    );
+    paymentRequests.add(request);
+    notifications.insert(
+      0,
+      AppNotification(
+        id: nextId('NT-'),
+        type: AppNotificationType.paymentRequested,
+        title: 'New payment request',
+        message:
+            '${request.customerName}: a ${request.kind} payment is awaiting your approval.',
+        audienceRole: 'admin',
+        customerId: customerId,
+        createdAt: DateTime.now(),
+      ),
+    );
+    Future.microtask(() {
+      _paymentRequestsController.add([...paymentRequests]);
+      _notificationsController.add([...notifications]);
+    });
+  }
+
+  @override
+  Stream<List<PaymentRequest>> watchPaymentRequests() async* {
+    yield List.of(paymentRequests);
+    yield* _paymentRequestsController.stream.map((list) => List.of(list));
+  }
+
+  @override
+  Future<void> approvePaymentRequest(String requestId) async {
+    final index = paymentRequests.indexWhere((r) => r.id == requestId);
+    if (index == -1) return;
+    paymentRequests[index] = paymentRequests[index].copyWith(
+      status: PaymentRequestStatus.approved,
+      reviewedByEmail: 'admin@cipms.test',
+      reviewedAt: DateTime.now(),
+    );
+    Future.microtask(
+      () => _paymentRequestsController.add([...paymentRequests]),
+    );
+  }
+
+  @override
+  Future<void> rejectPaymentRequest(String requestId) async {
+    final index = paymentRequests.indexWhere((r) => r.id == requestId);
+    if (index == -1) return;
+    paymentRequests[index] = paymentRequests[index].copyWith(
+      status: PaymentRequestStatus.rejected,
+      reviewedByEmail: 'admin@cipms.test',
+      reviewedAt: DateTime.now(),
+    );
+    Future.microtask(
+      () => _paymentRequestsController.add([...paymentRequests]),
+    );
+  }
+
+  @override
+  Future<void> updatePayment(
+    String customerId,
+    String paymentId,
+    double newAmount,
+  ) async {}
+
+  @override
+  Future<void> deletePayment(String customerId, String paymentId) async {}
 
   @override
   Future<void> restoreToActive(Customer customer) async {}
