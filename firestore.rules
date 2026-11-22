@@ -60,7 +60,7 @@ service cloud.firestore {
         && data.dateAdded is timestamp
         && data.dueDate is timestamp
         && (data.lastPaymentDate == null || data.lastPaymentDate is timestamp)
-        && data.accountStatus in ['active', 'delayed', 'completed']
+        && data.accountStatus in ['active', 'delayed', 'paid', 'completed']
         && validAmounts(data)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
@@ -145,7 +145,7 @@ service cloud.firestore {
           && request.resource.data.updatedBy == request.auth.uid
           && request.resource.data.updatedAt is timestamp
           && validAmounts(request.resource.data)
-          && request.resource.data.accountStatus in ['active', 'delayed', 'completed']
+          && request.resource.data.accountStatus in ['active', 'delayed', 'paid', 'completed']
       ) || (
         isStaff()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -167,7 +167,7 @@ service cloud.firestore {
           && (
             request.resource.data.accountStatus == resource.data.accountStatus
               || (
-                request.resource.data.accountStatus == 'completed'
+                request.resource.data.accountStatus == 'paid'
                   && request.resource.data.amountPaidCentavos >= request.resource.data.totalDueCentavos
               )
           )

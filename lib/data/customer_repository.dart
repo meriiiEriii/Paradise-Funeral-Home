@@ -3,6 +3,7 @@ import '../models/app_notification.dart';
 import '../models/customer.dart';
 import '../models/discount_request.dart';
 import '../models/package_template.dart';
+import '../models/payment_entry.dart';
 import '../models/staff_request.dart';
 
 class CustomerRepositoryException implements Exception {
@@ -60,6 +61,9 @@ abstract class CustomerRepository {
 
   /// Admin-defined pre-made packages, selectable in the New Customer form.
   Stream<List<PackageTemplate>> watchPackageTemplates();
+
+  /// Full payment history of a customer, newest first.
+  Stream<List<PaymentEntry>> watchPayments(String customerId);
 
   /// Creates or updates a package template (admin only). Returns the saved
   /// template with its document id.

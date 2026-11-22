@@ -1,6 +1,6 @@
 enum PaymentStatus { unpaid, partiallyPaid, overdue, fullyPaid }
 
-enum AccountStatus { active, delayed, completed }
+enum AccountStatus { active, delayed, paid, completed }
 
 class PackageItem {
   String name;

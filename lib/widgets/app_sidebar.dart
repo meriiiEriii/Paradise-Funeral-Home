@@ -92,6 +92,12 @@ class AppSidebar extends StatelessWidget {
                       ),
                       _navItem(
                         context,
+                        Icons.task_alt_outlined,
+                        'Paid',
+                        'paid',
+                      ),
+                      _navItem(
+                        context,
                         Icons.inventory_2_outlined,
                         'Completed / Archive',
                         'completed',

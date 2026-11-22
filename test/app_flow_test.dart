@@ -96,6 +96,17 @@ Future<void> _pumpApp(
   await tester.pumpAndSettle();
 }
 
+/// Desktop starts with the sidebar hidden; opens it for navigation tests.
+Future<void> _openSidebar(WidgetTester tester) async {
+  final navVisible = find.text('Management System').evaluate().isNotEmpty;
+  if (navVisible) return;
+  final menu = find.byTooltip('Open menu');
+  if (menu.evaluate().isNotEmpty) {
+    await tester.tap(menu);
+    await tester.pumpAndSettle();
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -138,7 +149,7 @@ void main() {
       expect(store.generateCustomerId(), 'CUS-0003');
     });
 
-    test('final payment archives the account', () {
+    test('final payment moves the account to Paid, then admin archives it', () {
       final store = CustomerStore();
       store.addCustomer(_customer(id: 'CUS-0001'));
 
@@ -150,8 +161,17 @@ void main() {
 
       store.recordPayment('CUS-0001', 600);
       final paid = store.getCustomerById('CUS-0001')!;
-      expect(paid.accountStatus, AccountStatus.completed);
+      expect(paid.accountStatus, AccountStatus.paid);
       expect(paid.remainingBalance, 0);
+      // Paid accounts leave the dashboard's active list.
+      expect(store.activeCustomers, isEmpty);
+      expect(store.paidCustomers.length, 1);
+
+      // The admin approves the account into the archive.
+      store.markAsCompleted(paid);
+      expect(store.getCustomerById('CUS-0001')!.accountStatus,
+          AccountStatus.completed);
+      expect(store.completedCustomers.length, 1);
     });
 
     test('restore keeps delayed accounts active with a future due date', () {
@@ -601,7 +621,7 @@ void main() {
 
       final maria = store.getCustomerById('CUS-0001')!;
       expect(maria.amountPaid, 2000);
-      expect(maria.accountStatus, AccountStatus.completed);
+      expect(maria.accountStatus, AccountStatus.paid);
       expect(find.textContaining('Payment of'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -727,7 +747,7 @@ void main() {
       // The template exists and is selected in the dropdown.
       expect(store.packageTemplates.length, 1);
       expect(store.packageTemplates.first.name, 'Package 1');
-      expect(find.text('Package 1 · ₱15000.00'), findsOneWidget);
+      expect(find.text('Package 1'), findsOneWidget);
 
       // Selecting prefills the item rows.
       expect(find.text('Casket'), findsOneWidget);
@@ -761,7 +781,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byType(DropdownButton<String>));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Package 2 · ₱8000.00').last);
+      await tester.tap(find.text('Package 2').last);
       await tester.pumpAndSettle();
 
       expect(find.text('Urn'), findsOneWidget);
@@ -860,7 +880,8 @@ void main() {
 
       expect(find.byTooltip('Add Customer'), findsOneWidget);
 
-      // Wide viewport: the sidebar is permanently visible.
+      // Wide viewport: the sidebar opens with the burger button.
+      await _openSidebar(tester);
       expect(find.text('All Customers'), findsOneWidget);
       expect(find.text('Payment'), findsOneWidget);
       expect(find.text('Discount Approvals'), findsNothing);
@@ -899,6 +920,40 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('admin reviews and approves a fully paid account', (
+      tester,
+    ) async {
+      final store = _seedStore();
+      // Maria (2000 total, 500 paid) settles the rest.
+      await store.recordPayment('CUS-0001', 1500);
+      expect(store.paidCustomers.length, 1);
+      expect(store.activeCustomers.length, 1);
+
+      await _pumpApp(tester, store, initialLocation: '/paid');
+      expect(find.text('Paid Accounts'), findsWidgets);
+      expect(find.text('Maria Santos'), findsOneWidget);
+
+      // Open the review page: details, history, and the approve action.
+      await tester.tap(find.text('Maria Santos'));
+      await tester.pumpAndSettle();
+      expect(find.text('Account details'), findsOneWidget);
+      expect(find.text('Payment history'), findsOneWidget);
+      expect(find.text('Balance after'), findsWidgets);
+      expect(find.textContaining('Approve & move'), findsOneWidget);
+
+      await tester.tap(find.textContaining('Approve & move'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Approve').last);
+      await tester.pumpAndSettle();
+
+      expect(
+        store.getCustomerById('CUS-0001')!.accountStatus,
+        AccountStatus.completed,
+      );
+      expect(store.paidCustomers, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('staff profile can record payments and request discounts', (
       tester,
     ) async {
@@ -929,23 +984,25 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('sidebar can be hidden with the menu button', (tester) async {
+    testWidgets('sidebar is hidden by default and opens with the menu', (
+      tester,
+    ) async {
       await _pumpApp(tester, _seedStore());
 
-      // Wide viewport: sidebar starts open.
-      expect(find.text('All Customers'), findsOneWidget);
-      expect(find.text('Management System'), findsOneWidget);
-
-      // The burger button hides it.
-      await tester.tap(find.byTooltip('Open menu'));
-      await tester.pumpAndSettle();
+      // Wide viewport: the sidebar starts hidden.
       expect(find.text('Management System'), findsNothing);
       expect(find.text('All Customers'), findsNothing);
 
-      // Tapping it again brings the sidebar back.
+      // The burger button opens it.
       await tester.tap(find.byTooltip('Open menu'));
       await tester.pumpAndSettle();
       expect(find.text('Management System'), findsOneWidget);
+      expect(find.text('All Customers'), findsOneWidget);
+
+      // Tapping it again hides the sidebar.
+      await tester.tap(find.byTooltip('Open menu'));
+      await tester.pumpAndSettle();
+      expect(find.text('Management System'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -1070,7 +1127,7 @@ void main() {
     testWidgets('logout returns the user to the login screen', (tester) async {
       await _pumpApp(tester, _seedStore());
 
-      // Wide viewport: the sidebar with Logout is permanently visible.
+      await _openSidebar(tester);
       await tester.tap(find.text('Logout'));
       await tester.pumpAndSettle();
 
@@ -1087,6 +1144,7 @@ void main() {
       final session = FakeAuthSession.admin();
       await _pumpApp(tester, _seedStore(), session: session);
 
+      await _openSidebar(tester);
       expect(find.text('Administrator'), findsOneWidget);
       expect(find.text('Discount Approvals'), findsOneWidget);
 
@@ -1105,6 +1163,7 @@ void main() {
       final session = FakeAuthSession.admin();
       await _pumpApp(tester, _seedStore(), session: session);
 
+      await _openSidebar(tester);
       await tester.tap(find.text('Staff').first);
       await tester.pumpAndSettle();
 
@@ -1127,6 +1186,7 @@ void main() {
     testWidgets('staff must sign in to reach the admin view', (tester) async {
       await _pumpApp(tester, _seedStore(), session: FakeAuthSession.staff());
 
+      await _openSidebar(tester);
       await tester.tap(find.text('Administrator'));
       await tester.pumpAndSettle();
 

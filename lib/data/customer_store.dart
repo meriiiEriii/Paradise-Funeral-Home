@@ -7,6 +7,7 @@ import '../models/app_notification.dart';
 import '../models/customer.dart';
 import '../models/discount_request.dart';
 import '../models/package_template.dart';
+import '../models/payment_entry.dart';
 import '../models/staff_request.dart';
 import 'customer_repository.dart';
 
@@ -18,6 +19,7 @@ class CustomerStore extends ChangeNotifier {
   final List<StaffRequest> _staffRequests = [];
   final List<StaffRequest> _staffList = [];
   final List<PackageTemplate> _packageTemplates = [];
+  final Map<String, List<PaymentEntry>> _localPayments = {};
   StreamSubscription<List<Customer>>? _subscription;
   StreamSubscription<List<DiscountRequest>>? _requestSubscription;
   StreamSubscription<List<AppNotification>>? _notificationSubscription;
@@ -59,6 +61,14 @@ class CustomerStore extends ChangeNotifier {
       .where((c) => c.accountStatus == AccountStatus.completed)
       .toList()
     ..sort(_newestFirst);
+
+  /// Fully paid accounts awaiting admin approval for the archive.
+  List<Customer> get paidCustomers => _customers
+      .where((c) => c.accountStatus == AccountStatus.paid)
+      .toList()
+    ..sort(_newestFirst);
+
+  int get paidCustomerCount => paidCustomers.length;
 
   List<DiscountRequest> get discountRequests =>
       List.unmodifiable(_discountRequests);
@@ -378,6 +388,20 @@ class CustomerStore extends ChangeNotifier {
     }
   }
 
+  /// Full payment history of a customer, newest first.
+  ///
+  /// In repository mode this streams from the payments subcollection; in
+  /// local mode it reflects payments recorded in this session.
+  Stream<List<PaymentEntry>> watchPayments(String customerId) {
+    final repository = _repository;
+    if (repository != null) {
+      return repository.watchPayments(customerId);
+    }
+    return Stream.value(
+      (_localPayments[customerId] ?? const <PaymentEntry>[]).toList(),
+    );
+  }
+
   Future<void> recordPayment(String customerId, double amount) async {
     if (_repository != null) {
       await _repository.recordPayment(customerId, amount);
@@ -391,8 +415,20 @@ class CustomerStore extends ChangeNotifier {
         amountPaid: customer.amountPaid + amount,
         lastPaymentDate: DateTime.now(),
       );
+      final balanceAfter = updated.remainingBalance;
+      final payments = [...?_localPayments[customerId]];
+      payments.insert(
+        0,
+        PaymentEntry(
+          id: 'LP-${payments.length + 1}',
+          amountCentavos: (amount * 100).round(),
+          balanceAfterCentavos: (balanceAfter * 100).round(),
+          recordedAt: DateTime.now(),
+        ),
+      );
+      _localPayments[customerId] = payments;
       _customers[index] = updated.remainingBalance <= 0
-          ? updated.copyWith(accountStatus: AccountStatus.completed)
+          ? updated.copyWith(accountStatus: AccountStatus.paid)
           : updated;
       if (updated.remainingBalance <= 0) {
         _notifications.insert(
@@ -402,7 +438,8 @@ class CustomerStore extends ChangeNotifier {
             type: AppNotificationType.paymentCompleted,
             title: 'Account fully paid',
             message:
-                '${customer.name} ($customerId) is now fully paid. The account has been moved to Completed.',
+                '${customer.name} ($customerId) is now fully paid and is '
+                'awaiting your approval for the archive.',
             audienceRole: 'admin',
             customerId: customerId,
             createdAt: DateTime.now(),

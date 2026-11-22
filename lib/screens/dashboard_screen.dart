@@ -27,12 +27,37 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final _searchCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
   String _searchQuery = '';
+  String _addressQuery = '';
+  String _statusFilter = 'active';
+  String _yearFilter = 'all';
+  DateTime? _dateAddedFilter;
+  DateTime? _dueDateFilter;
   bool _sortAscending = true;
   int? _sortColumnIndex;
   List<Customer> _localCustomers = const [];
   bool _showImportBanner = false;
   bool _importing = false;
+
+  bool get _hasActiveFilters =>
+      _addressQuery.isNotEmpty ||
+      _statusFilter != 'active' ||
+      _yearFilter != 'all' ||
+      _dateAddedFilter != null ||
+      _dueDateFilter != null;
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  List<String> get _availableYears {
+    final years = widget.store.allCustomers
+        .map((c) => c.dateAdded.year)
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+    return years.map((year) => year.toString()).toList();
+  }
 
   @override
   void initState() {
@@ -66,7 +91,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   List<Customer> get _filteredCustomers {
-    var customers = widget.store.searchActiveCustomers(_searchQuery);
+    var customers = widget.store.searchAllCustomers(_searchQuery).where((c) {
+      // The dashboard defaults to active accounts; the filters can surface
+      // any other status.
+      switch (_statusFilter) {
+        case 'active':
+          if (c.accountStatus != AccountStatus.active) return false;
+          break;
+        case 'delayed':
+          if (c.accountStatus != AccountStatus.delayed) return false;
+          break;
+        case 'paid':
+          if (c.accountStatus != AccountStatus.paid) return false;
+          break;
+        case 'completed':
+          if (c.accountStatus != AccountStatus.completed) return false;
+          break;
+      }
+      if (_addressQuery.isNotEmpty &&
+          !c.address.toLowerCase().contains(
+            _addressQuery.toLowerCase(),
+          )) {
+        return false;
+      }
+      if (_yearFilter != 'all' && c.dateAdded.year.toString() != _yearFilter) {
+        return false;
+      }
+      if (_dateAddedFilter != null &&
+          !_sameDay(c.dateAdded, _dateAddedFilter!)) {
+        return false;
+      }
+      if (_dueDateFilter != null && !_sameDay(c.dueDate, _dueDateFilter!)) {
+        return false;
+      }
+      return true;
+    }).toList();
     _applySort(customers);
     return customers;
   }
@@ -372,51 +431,298 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Row(
+        child: Column(
           children: [
-            Expanded(
-              child: TextField(
-                controller: _searchCtrl,
-                style: theme.textTheme.bodyMedium,
-                decoration: InputDecoration(
-                  hintText: 'Search active accounts by name, contact, or ID',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          tooltip: 'Clear search',
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtrl,
+                    style: theme.textTheme.bodyMedium,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Search accounts by name, contact, or ID',
+                      prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              tooltip: 'Clear search',
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                  ),
                 ),
-                onChanged: (v) => setState(() => _searchQuery = v),
-              ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.brandSoft,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: scheme.primary.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  child: Text(
+                    '$shownCount shown',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: palette.brandSoft,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: scheme.primary.withValues(alpha: 0.14),
-                ),
-              ),
-              child: Text(
-                '$shownCount shown',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
+            const SizedBox(height: 10),
+            _buildFilterRow(theme, scheme, palette),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFilterRow(
+    ThemeData theme,
+    ColorScheme scheme,
+    AppPalette palette,
+  ) {
+    Future<void> pickDate({required bool isDueDate}) async {
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: isDueDate
+            ? (_dueDateFilter ?? DateTime.now())
+            : (_dateAddedFilter ?? DateTime.now()),
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2035),
+      );
+      if (picked == null) return;
+      setState(() {
+        if (isDueDate) {
+          _dueDateFilter = picked;
+        } else {
+          _dateAddedFilter = picked;
+        }
+      });
+    }
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        SizedBox(
+          width: 190,
+          child: TextField(
+            controller: _addressCtrl,
+            style: theme.textTheme.bodySmall,
+            decoration: InputDecoration(
+              hintText: 'Filter by address',
+              prefixIcon: const Icon(Icons.location_on_outlined, size: 18),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+              suffixIcon: _addressQuery.isNotEmpty
+                  ? IconButton(
+                      tooltip: 'Clear address filter',
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      onPressed: () {
+                        _addressCtrl.clear();
+                        setState(() => _addressQuery = '');
+                      },
+                    )
+                  : null,
+            ),
+            onChanged: (v) => setState(() => _addressQuery = v),
+          ),
+        ),
+        _filterDropdown(
+          theme,
+          palette,
+          value: _statusFilter,
+          label: _statusLabel(_statusFilter),
+          icon: Icons.flag_outlined,
+          items: const [
+            ('active', 'Active'),
+            ('delayed', 'Delayed'),
+            ('paid', 'Paid'),
+            ('completed', 'Completed'),
+            ('all', 'All statuses'),
+          ],
+          onChanged: (value) => setState(() => _statusFilter = value),
+        ),
+        _filterDropdown(
+          theme,
+          palette,
+          value: _yearFilter,
+          label: _yearFilter == 'all' ? 'All years' : _yearFilter,
+          icon: Icons.calendar_today_outlined,
+          items: [
+            ('all', 'All years'),
+            for (final year in _availableYears) (year, year),
+          ],
+          onChanged: (value) => setState(() => _yearFilter = value),
+        ),
+        _filterDateChip(
+          theme,
+          palette,
+          label: _dateAddedFilter == null
+              ? 'Date added'
+              : 'Added ${_formatDate(_dateAddedFilter!)}',
+          icon: Icons.event_outlined,
+          selected: _dateAddedFilter != null,
+          onTap: () => pickDate(isDueDate: false),
+          onClear: () => setState(() => _dateAddedFilter = null),
+        ),
+        _filterDateChip(
+          theme,
+          palette,
+          label: _dueDateFilter == null
+              ? 'Due date'
+              : 'Due ${_formatDate(_dueDateFilter!)}',
+          icon: Icons.date_range_outlined,
+          selected: _dueDateFilter != null,
+          onTap: () => pickDate(isDueDate: true),
+          onClear: () => setState(() => _dueDateFilter = null),
+        ),
+        if (_hasActiveFilters)
+          TextButton.icon(
+            onPressed: () {
+              _addressCtrl.clear();
+              setState(() {
+                _addressQuery = '';
+                _statusFilter = 'active';
+                _yearFilter = 'all';
+                _dateAddedFilter = null;
+                _dueDateFilter = null;
+              });
+            },
+            icon: const Icon(Icons.restart_alt_rounded, size: 17),
+            label: const Text('Clear filters'),
+          ),
+      ],
+    );
+  }
+
+  String _statusLabel(String value) {
+    switch (value) {
+      case 'delayed':
+        return 'Delayed';
+      case 'paid':
+        return 'Paid';
+      case 'completed':
+        return 'Completed';
+      case 'all':
+        return 'All statuses';
+      default:
+        return 'Active';
+    }
+  }
+
+  Widget _filterDropdown(
+    ThemeData theme,
+    AppPalette palette, {
+    required String value,
+    required String label,
+    required IconData icon,
+    required List<(String, String)> items,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: palette.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isDense: true,
+          borderRadius: BorderRadius.circular(10),
+          items: [
+            for (final (itemValue, itemLabel) in items)
+              DropdownMenuItem(
+                value: itemValue,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 15, color: palette.muted),
+                    const SizedBox(width: 6),
+                    Text(itemLabel, style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+          ],
+          onChanged: (selected) {
+            if (selected != null) onChanged(selected);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _filterDateChip(
+    ThemeData theme,
+    AppPalette palette, {
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+    required VoidCallback onClear,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 2, 4, 2),
+      decoration: BoxDecoration(
+        color: selected ? palette.brandSoft : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: selected
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)
+              : palette.border,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 15,
+                    color: selected
+                        ? Theme.of(context).colorScheme.primary
+                        : palette.muted,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(label, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ),
+          if (selected)
+            IconButton(
+              tooltip: 'Clear',
+              icon: const Icon(Icons.close_rounded, size: 15),
+              onPressed: onClear,
+            ),
+        ],
       ),
     );
   }
@@ -527,20 +833,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     if (constraints.maxWidth >= 420) ...[
                       const Spacer(),
-                      Flexible(
-                        child: Text(
-                          'Tap a row to open the profile',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: palette.muted,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: 0.1,
-                          ),
-                        ),
-                      ),
                     ],
                   ],
                 );
@@ -550,9 +842,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Divider(height: 1, color: palette.border),
           Expanded(
             child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SingleChildScrollView(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
                 child: DataTable(
+                  columnSpacing: 14,
+                  horizontalMargin: 12,
                   sortColumnIndex: _sortColumnIndex,
                   sortAscending: _sortAscending,
                   showCheckboxColumn: false,

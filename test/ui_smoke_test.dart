@@ -87,9 +87,12 @@ void main() {
   testWidgets('Sidebar navigation and theme toggle work', (tester) async {
     await _pumpApp(tester, const Size(1400, 900));
 
-    // Wide viewport: the sidebar starts open and can be toggled with the
-    // burger button.
+    // Wide viewport: the sidebar is hidden until the burger opens it.
     expect(find.byTooltip('Open menu'), findsOneWidget);
+    expect(find.text('All Customers'), findsNothing);
+
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pumpAndSettle();
     expect(find.text('All Customers'), findsOneWidget);
 
     await tester.tap(find.text('All Customers'));

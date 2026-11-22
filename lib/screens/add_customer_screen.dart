@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../models/customer.dart';
 import '../models/package_template.dart';
@@ -41,7 +41,10 @@ class AddCustomerScreen extends StatefulWidget {
 
 class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
+  final _firstNameCtrl = TextEditingController();
+  final _middleNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _suffixCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _contactCtrl = TextEditingController();
   final _remarksCtrl = TextEditingController();
@@ -51,6 +54,30 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   DateTime _dueDate = DateTime.now().add(const Duration(days: 10));
   bool _isSubmitting = false;
   String _selectedTemplateId = '';
+
+  /// "Juan", "Reyes", "Dela", "Jr." -> "Juan Reyes Dela Jr."
+  String get _fullName {
+    String part(String raw) {
+      final trimmed = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
+      if (trimmed.isEmpty) return '';
+      return trimmed
+          .split(' ')
+          .map(
+            (word) => word.isEmpty
+                ? word
+                : word[0].toUpperCase() + word.substring(1).toLowerCase(),
+          )
+          .join(' ');
+    }
+
+    final suffix = _suffixCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    return [
+      part(_firstNameCtrl.text),
+      part(_middleNameCtrl.text),
+      part(_lastNameCtrl.text),
+      suffix.isEmpty ? '' : suffix.toUpperCase(),
+    ].where((value) => value.isNotEmpty).join(' ');
+  }
 
   @override
   void initState() {
@@ -66,7 +93,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   @override
   void dispose() {
     widget.store.removeListener(_onStoreChanged);
-    _nameCtrl.dispose();
+    _firstNameCtrl.dispose();
+    _middleNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _suffixCtrl.dispose();
     _addressCtrl.dispose();
     _contactCtrl.dispose();
     _remarksCtrl.dispose();
@@ -209,7 +239,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
     final packageItems = _items.map((e) {
       return PackageItem(
-        name: e.nameCtrl.text.trim(),
+        name: _titleCase(e.nameCtrl.text),
         amount: double.tryParse(e.amountCtrl.text) ?? 0,
       );
     }).toList();
@@ -240,12 +270,12 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final customer = Customer(
       id: '',
       dateAdded: _dateStarted,
-      name: _titleCase(_nameCtrl.text),
+      name: _fullName,
       address: _addressCtrl.text.trim(),
       contactNumber: _normalizedContact,
       package: _packageNameCtrl.text.trim().isEmpty
           ? 'Custom Package'
-          : _packageNameCtrl.text.trim(),
+          : _titleCase(_packageNameCtrl.text),
       items: packageItems,
       amountPaid: 0.0,
       remarks: _remarksCtrl.text.trim(),
@@ -348,13 +378,53 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       icon: Icons.badge_outlined,
       child: Column(
         children: [
-          _buildField(
-            'Full Name',
-            _nameCtrl,
-            Icons.person_outline_rounded,
-            textCapitalization: TextCapitalization.words,
-            validator: (v) =>
-                (v?.trim().isEmpty ?? true) ? 'Name is required' : null,
+          Row(
+            children: [
+              Expanded(
+                child: _buildField(
+                  'First Name',
+                  _firstNameCtrl,
+                  Icons.person_outline_rounded,
+                  textCapitalization: TextCapitalization.words,
+                  validator: (v) =>
+                      (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildField(
+                  'Last Name',
+                  _lastNameCtrl,
+                  Icons.person_outline_rounded,
+                  textCapitalization: TextCapitalization.words,
+                  validator: (v) =>
+                      (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildField(
+                  'Middle Name (optional)',
+                  _middleNameCtrl,
+                  Icons.person_outline_rounded,
+                  textCapitalization: TextCapitalization.words,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildField(
+                  'Suffix (optional)',
+                  _suffixCtrl,
+                  Icons.person_outline_rounded,
+                  hint: 'Jr., Sr., II',
+                  textCapitalization: TextCapitalization.characters,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           _buildField(
@@ -395,7 +465,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
         ),
         child: Text(
-          'â‚±${_totalCost.toStringAsFixed(2)}',
+          '₱${_totalCost.toStringAsFixed(2)}',
           style: theme.textTheme.labelSmall?.copyWith(
             color: scheme.primary,
             fontWeight: FontWeight.w700,
@@ -478,7 +548,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                     DropdownMenuItem(
                       value: template.id,
                       child: Text(
-                        '${template.name} · ₱${template.total.toStringAsFixed(2)}',
+                        template.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -524,6 +594,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
     final nameField = TextFormField(
       controller: item.nameCtrl,
+      textCapitalization: TextCapitalization.words,
       decoration: const InputDecoration(
         labelText: 'Item name',
         hintText: 'e.g. Installation',
@@ -534,7 +605,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final amountField = TextFormField(
       controller: item.amountCtrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: const InputDecoration(labelText: 'Amount', prefixText: 'â‚± '),
+      decoration: const InputDecoration(labelText: 'Amount', prefixText: '₱ '),
       onChanged: (_) => setState(() {}),
       validator: (v) {
         if (v?.trim().isEmpty ?? true) return 'Required';
@@ -667,7 +738,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         ),
                       ),
                       Text(
-                        'â‚±${_totalCost.toStringAsFixed(2)}',
+                        '₱${_totalCost.toStringAsFixed(2)}',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontFamily: 'Lora',
                           fontWeight: FontWeight.w700,

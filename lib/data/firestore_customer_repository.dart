@@ -10,6 +10,7 @@ import '../models/app_notification.dart';
 import '../models/customer.dart';
 import '../models/discount_request.dart';
 import '../models/package_template.dart';
+import '../models/payment_entry.dart';
 import '../models/staff_request.dart';
 import 'customer_repository.dart';
 
@@ -212,7 +213,7 @@ class FirestoreCustomerRepository implements CustomerRepository {
           'lastPaymentDate': FieldValue.serverTimestamp(),
           'lastPaymentId': paymentRef.id,
           'accountStatus': completed
-              ? 'completed'
+              ? 'paid'
               : (data['accountStatus'] as String? ?? 'active'),
           'updatedAt': FieldValue.serverTimestamp(),
           'updatedBy': user.uid,
@@ -558,7 +559,7 @@ class FirestoreCustomerRepository implements CustomerRepository {
           'totalDueCentavos': newTotalDue,
           'pendingDiscountRequestId': FieldValue.delete(),
           'accountStatus': completed
-              ? 'completed'
+              ? 'paid'
               : (data['accountStatus'] as String? ?? 'active'),
           'updatedAt': FieldValue.serverTimestamp(),
           'updatedBy': user.uid,
@@ -811,6 +812,43 @@ class FirestoreCustomerRepository implements CustomerRepository {
               return staff;
             });
       });
+    });
+  }
+
+  @override
+  Stream<List<PaymentEntry>> watchPayments(String customerId) {
+    return _auth.authStateChanges().asyncExpand((user) {
+      if (user == null) return Stream.value(const <PaymentEntry>[]);
+      return _customerRef(customerId).collection('payments').snapshots().map(
+        (snapshot) {
+          final payments = snapshot.docs.map((doc) {
+            final data = doc.data();
+            final recordedAt = data['recordedAt'];
+            final recordedBy = data['recordedBy'] is Map
+                ? Map<String, dynamic>.from(data['recordedBy'] as Map)
+                : const <String, dynamic>{};
+            return PaymentEntry(
+              id: doc.id,
+              amountCentavos:
+                  (data['amountCentavos'] as num?)?.toInt() ?? 0,
+              balanceAfterCentavos:
+                  (data['balanceAfterCentavos'] as num?)?.toInt() ?? 0,
+              recordedAt: recordedAt is Timestamp
+                  ? recordedAt.toDate()
+                  : null,
+              note: data['note'] as String? ?? '',
+              recordedByEmail: recordedBy['email'] as String? ?? '',
+            );
+          }).toList()
+            ..sort((a, b) {
+              final aDate = a.recordedAt;
+              final bDate = b.recordedAt;
+              if (aDate == null || bDate == null) return 0;
+              return bDate.compareTo(aDate);
+            });
+          return payments;
+        },
+      );
     });
   }
 

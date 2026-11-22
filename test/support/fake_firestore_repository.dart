@@ -6,6 +6,7 @@ import 'package:inventory/models/app_notification.dart';
 import 'package:inventory/models/customer.dart';
 import 'package:inventory/models/discount_request.dart';
 import 'package:inventory/models/package_template.dart';
+import 'package:inventory/models/payment_entry.dart';
 import 'package:inventory/models/staff_request.dart';
 
 /// Mimics FirestoreCustomerRepository behaviour: writes do not mutate local
@@ -270,6 +271,11 @@ class FakeFirestoreRepository implements CustomerRepository {
     Future.microtask(
       () => _packageTemplatesController.add([...packageTemplates]),
     );
+  }
+
+  @override
+  Stream<List<PaymentEntry>> watchPayments(String customerId) {
+    return Stream.value(const <PaymentEntry>[]);
   }
 
   @override

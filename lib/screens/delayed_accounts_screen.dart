@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/customer.dart';
@@ -287,7 +287,7 @@ class _DelayedAccountsScreenState extends State<DelayedAccountsScreen> {
                     children: [
                       _detail(
                         'Balance',
-                        'â‚±${customer.remainingBalance.toStringAsFixed(2)}',
+                        '₱${customer.remainingBalance.toStringAsFixed(2)}',
                         color: palette.danger,
                         bold: true,
                         alignEnd: true,

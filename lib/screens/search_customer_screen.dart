@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/customer.dart';
@@ -24,7 +24,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
   void initState() {
     super.initState();
     widget.store.addListener(_onStoreChanged);
-    // Every customer record â€” active, delayed, and completed â€” is listed
+    // Every customer record — active, delayed, and completed — is listed
     // right away, newest first.
     _results = widget.store.searchAllCustomers(_searchCtrl.text);
   }
@@ -119,7 +119,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Every customer record â€” active, delayed, or completed. Search by name, contact number, or customer ID.',
+                      'Every customer record — active, delayed, or completed. Search by name, contact number, or customer ID.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.82),
                         fontSize: 12,
@@ -448,7 +448,7 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            'â‚±${amount.toStringAsFixed(2)}',
+            '₱${amount.toStringAsFixed(2)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.labelLarge?.copyWith(

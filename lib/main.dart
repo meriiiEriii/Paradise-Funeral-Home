@@ -22,6 +22,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/delayed_accounts_screen.dart';
 import 'screens/admin_login_dialog.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/paid_accounts_screen.dart';
 import 'screens/payment_screen.dart';
 import 'screens/search_customer_screen.dart';
 import 'screens/staff_requests_screen.dart';
@@ -245,6 +246,19 @@ class _CIPMSAppState extends State<CIPMSApp> {
                 ),
               ),
             ),
+            GoRoute(
+              path: '/paid',
+              pageBuilder: (context, state) {
+                final user = session.user;
+                if (user == null) {
+                  return _shellPage(state, const SizedBox.shrink());
+                }
+                return _shellPage(
+                  state,
+                  PaidAccountsScreen(store: store, user: user),
+                );
+              },
+            ),
           ],
         ),
         GoRoute(
@@ -256,6 +270,18 @@ class _CIPMSAppState extends State<CIPMSApp> {
             canRequestDiscount: session.user != null && !session.user!.isAdmin,
             canShareQr: session.user != null,
           ),
+        ),
+        GoRoute(
+          path: '/paid/:id',
+          builder: (context, state) {
+            final user = session.user;
+            if (user == null) return const SizedBox.shrink();
+            return PaidAccountDetailScreen(
+              store: store,
+              user: user,
+              customerId: state.pathParameters['id'] ?? '',
+            );
+          },
         ),
         GoRoute(
           path: '/view/:id',
@@ -423,7 +449,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  bool _sidebarOpen = true;
+  bool _sidebarOpen = false;
 
   AppUser get _user => widget.session.user ?? widget.user;
 
@@ -508,6 +534,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _scaffoldKey.currentState?.closeDrawer();
       widget.session.viewAsStaff();
       widget.store.setNotificationRole(AppRole.staff);
+      context.go('/dashboard');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Switched to the staff view.')),
@@ -520,6 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final unlocked = await showAdminLoginDialog(context, widget.session);
     if (!mounted || !unlocked) return;
     widget.store.setNotificationRole(widget.session.user?.role);
+    context.go('/dashboard');
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Administrator access granted.')),
     );
@@ -533,6 +561,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return '/payment';
       case 'delayed':
         return '/delayed';
+      case 'paid':
+        return '/paid';
       case 'completed':
         return '/completed';
       case 'approvals':
@@ -556,6 +586,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return 'Payment';
       case 'delayed':
         return 'Delayed Accounts';
+      case 'paid':
+        return 'Paid Accounts';
       case 'completed':
         return 'Completed / Archive';
       case 'approvals':

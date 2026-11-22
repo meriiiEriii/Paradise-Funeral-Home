@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/customer.dart';
@@ -295,13 +295,13 @@ class _CompletedArchiveScreenState extends State<CompletedArchiveScreen> {
                     children: [
                       _detail(
                         'Total due',
-                        'â‚±${customer.totalDue.toStringAsFixed(2)}',
+                        '₱${customer.totalDue.toStringAsFixed(2)}',
                         alignEnd: true,
                       ),
                       const SizedBox(height: 6),
                       _detail(
                         'Amount paid',
-                        'â‚±${customer.amountPaid.toStringAsFixed(2)}',
+                        '₱${customer.amountPaid.toStringAsFixed(2)}',
                         color: palette.success,
                         bold: true,
                         alignEnd: true,

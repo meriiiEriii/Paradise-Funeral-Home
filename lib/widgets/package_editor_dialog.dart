@@ -75,10 +75,23 @@ class _PackageEditorDialogState extends State<_PackageEditorDialog> {
     });
   }
 
+  String _titleCase(String value) {
+    final trimmed = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (trimmed.isEmpty) return trimmed;
+    return trimmed
+        .split(' ')
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : word[0].toUpperCase() + word.substring(1).toLowerCase(),
+        )
+        .join(' ');
+  }
+
   Future<void> _save() async {
     if (_busy || !_formKey.currentState!.validate()) return;
 
-    final name = _nameCtrl.text.trim();
+    final name = _titleCase(_nameCtrl.text);
     if (name.isEmpty) {
       setState(() => _error = 'Package name is required.');
       return;
@@ -96,7 +109,7 @@ class _PackageEditorDialogState extends State<_PackageEditorDialog> {
         );
         return;
       }
-      items.add(PackageItem(name: itemName, amount: amount));
+      items.add(PackageItem(name: _titleCase(itemName), amount: amount));
     }
     if (items.isEmpty) {
       setState(() => _error = 'Add at least one item to the package.');
@@ -233,6 +246,7 @@ class _PackageEditorDialogState extends State<_PackageEditorDialog> {
                             ),
                           ),
                         ),
+
                         const SizedBox(width: 8),
                         Expanded(
                           flex: 2,

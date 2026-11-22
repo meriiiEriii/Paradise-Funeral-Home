@@ -91,6 +91,10 @@ class AccountStatusBadge extends StatelessWidget {
         color = palette.danger;
         label = 'Delayed';
         break;
+      case AccountStatus.paid:
+        color = palette.warning;
+        label = 'Paid';
+        break;
       case AccountStatus.completed:
         color = palette.success;
         label = 'Completed';
