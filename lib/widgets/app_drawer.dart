@@ -76,6 +76,13 @@ class AppDrawer extends StatelessWidget {
                       'Discount Approvals',
                       'approvals',
                     ),
+                  if (user.isAdmin)
+                    _drawerItem(
+                      context,
+                      Icons.payments_rounded,
+                      'Payments',
+                      'payments',
+                    ),
                   _drawerItem(
                     context,
                     Icons.warning_amber_rounded,

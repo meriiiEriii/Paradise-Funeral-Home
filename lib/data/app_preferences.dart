@@ -127,14 +127,14 @@ class AppPreferences {
   }
 
   Future<void> upsertDraft(CustomerDraft draft) async {
-    final drafts = loadDrafts()
+    final drafts = [...loadDrafts()]
       ..removeWhere((existing) => existing.id == draft.id)
       ..insert(0, draft);
     await _saveDrafts(drafts);
   }
 
   Future<void> deleteDraft(String draftId) async {
-    final drafts = loadDrafts()..removeWhere((d) => d.id == draftId);
+    final drafts = [...loadDrafts()]..removeWhere((d) => d.id == draftId);
     await _saveDrafts(drafts);
   }
 

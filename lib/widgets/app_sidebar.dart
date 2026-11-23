@@ -83,6 +83,13 @@ class AppSidebar extends StatelessWidget {
                           'Discount Approvals',
                           'approvals',
                         ),
+                      if (user.isAdmin)
+                        _navItem(
+                          context,
+                          Icons.payments_rounded,
+                          'Payments',
+                          'payments',
+                        ),
                       _navItem(
                         context,
                         Icons.warning_amber_rounded,

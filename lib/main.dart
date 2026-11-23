@@ -27,6 +27,7 @@ import 'screens/admin_login_dialog.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/paid_accounts_screen.dart';
 import 'screens/payment_screen.dart';
+import 'screens/payments_screen.dart';
 import 'screens/search_customer_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/staff_requests_screen.dart';
@@ -289,6 +290,13 @@ class _CIPMSAppState extends State<CIPMSApp> {
                   ),
                 );
               },
+            ),
+            GoRoute(
+              path: '/payments',
+              pageBuilder: (context, state) => _shellPage(
+                state,
+                PaymentsScreen(store: store),
+              ),
             ),
             GoRoute(
               path: '/paid',
@@ -607,6 +615,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return '/completed';
       case 'approvals':
         return '/approvals';
+      case 'payments':
+        return '/payments';
       case 'staff-requests':
         return '/staff-requests';
       case 'settings':
@@ -636,6 +646,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return 'Completed / Archive';
       case 'approvals':
         return 'Discount Approvals';
+      case 'payments':
+        return 'Payments';
       case 'staff-requests':
         return 'Staff';
       case 'settings':

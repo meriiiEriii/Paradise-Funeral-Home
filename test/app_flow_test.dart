@@ -79,6 +79,7 @@ Future<void> _pumpApp(
   String initialLocation = '/dashboard',
   ValueChanged<ThemeMode>? onThemeChanged,
   AuthSession? session,
+  AppPreferences? preferences,
 }) async {
   tester.view.physicalSize = const Size(1400, 900);
   tester.view.devicePixelRatio = 1.0;
@@ -89,6 +90,7 @@ Future<void> _pumpApp(
     CIPMSApp(
       store: store,
       session: session ?? FakeAuthSession.admin(),
+      preferences: preferences,
       initialLocation: initialLocation,
       onThemeChanged: onThemeChanged,
     ),
@@ -924,6 +926,62 @@ void main() {
       // Staff cannot manage pre-made packages.
       expect(find.byTooltip('New package'), findsNothing);
       expect(find.byTooltip('Edit package'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('back on new customer offers save-to-drafts (staff)', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await AppPreferences.load();
+      final store = CustomerStore();
+      final session = FakeAuthSession.staff();
+
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        CIPMSApp(
+          store: store,
+          session: session,
+          preferences: prefs,
+          initialLocation: '/add',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'First Name').first,
+        'Juan',
+      );
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Save this draft?'), findsOneWidget);
+
+      await tester.tap(find.text('Save to Drafts'));
+      await tester.pumpAndSettle();
+
+      // The page closed and the draft was persisted.
+      expect(find.byTooltip('Add Customer'), findsOneWidget);
+      expect(prefs.loadDrafts().length, 1);
+      expect(prefs.loadDrafts().first.displayName, 'Juan');
+
+      // The draft is listed on the Drafts page (fresh app instance).
+      await tester.pumpWidget(
+        CIPMSApp(
+          key: const ValueKey('drafts-app'),
+          store: store,
+          session: session,
+          preferences: prefs,
+          initialLocation: '/drafts',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Juan'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

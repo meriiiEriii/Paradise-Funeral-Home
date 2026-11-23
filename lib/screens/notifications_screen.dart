@@ -283,6 +283,11 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             ? () => _openStaffRequest(notification)
             : isDiscountRequest
             ? () => _openApprovals(notification)
+            : isPaymentRequested
+            ? () {
+                _markReadQuietly(notification);
+                context.go('/payments');
+              }
             : isPaymentCompleted
             ? () => _openPaid(notification)
             : isCustomerAdded
