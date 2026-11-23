@@ -781,29 +781,35 @@ class _HomeScreenState extends State<HomeScreen> {
     if (isWide) {
       // The New Customer page never shows the sidebar.
       final sidebarVisible = _sidebarOpen && widget.currentRoute != 'add';
+      // The app bar spans the full window so the burger stays in a fixed
+      // top-left position whether the sidebar is open or closed.
       return Scaffold(
-        body: Row(
+        body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (sidebarVisible) ...[
-              AppSidebar(
-                user: _user,
-                currentRoute: widget.currentRoute,
-                onNavigate: _navigate,
-                onSelectRole: _selectRole,
-                isDark: isDark,
-                onToggleTheme: widget.onToggleTheme,
-              ),
-              VerticalDivider(width: 1, thickness: 1, color: palette.border),
-            ],
+            PreferredSize(
+              preferredSize: appBar.preferredSize,
+              child: appBar,
+            ),
             Expanded(
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  PreferredSize(
-                    preferredSize: appBar.preferredSize,
-                    child: appBar,
-                  ),
+                  if (sidebarVisible) ...[
+                    AppSidebar(
+                      user: _user,
+                      currentRoute: widget.currentRoute,
+                      onNavigate: _navigate,
+                      onSelectRole: _selectRole,
+                      isDark: isDark,
+                      onToggleTheme: widget.onToggleTheme,
+                    ),
+                    VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: palette.border,
+                    ),
+                  ],
                   Expanded(child: bodyContent),
                 ],
               ),

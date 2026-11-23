@@ -239,7 +239,7 @@ service cloud.firestore {
       allow read: if (isAdmin() || isStaff())
         && (isAdmin() || resource.data.requestedBy.uid == request.auth.uid);
 
-      allow create: if isStaff()
+      allow create: if (isAdmin() || isStaff())
         && request.resource.data.keys().hasOnly([
           'customerId',
           'customerName',

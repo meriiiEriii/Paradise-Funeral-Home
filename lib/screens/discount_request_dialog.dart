@@ -44,6 +44,18 @@ class _DiscountRequestDialogState extends State<_DiscountRequestDialog> {
     super.dispose();
   }
 
+  /// Live sentence formatting: `textCapitalization` is ignored by desktop
+  /// keyboards, so sentences are capitalized in code as the user types.
+  void _autoSentenceCase(TextEditingController controller) {
+    final raw = controller.text;
+    final formatted = capitalizeSentences(raw);
+    if (formatted == raw) return;
+    controller.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
   Future<void> _submit() async {
     final amount = double.tryParse(_amountCtrl.text.trim());
     final reason = capitalizeSentences(_reasonCtrl.text);
@@ -135,6 +147,7 @@ class _DiscountRequestDialogState extends State<_DiscountRequestDialog> {
                 controller: _reasonCtrl,
                 minLines: 2,
                 maxLines: 4,
+                onChanged: (_) => _autoSentenceCase(_reasonCtrl),
                 decoration: const InputDecoration(
                   labelText: 'Reason',
                   hintText: 'Why does this account need a discount?',
